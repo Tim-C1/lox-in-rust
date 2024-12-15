@@ -51,7 +51,10 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, ttype: TokenType) {
-        let lexeme = String::from(&self.source[self.start..self.current]);
+        let lexeme = match ttype {
+            TokenType::EOF => String::from(""),
+            _ => String::from(&self.source[self.start..self.current]),
+        };
         let token = Token::new(ttype, lexeme, None, self.line);
         self.tokens.push(token);
     }
