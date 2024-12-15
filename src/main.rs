@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use codecrafters_interpreter::scanner::Scanner;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -22,12 +23,16 @@ fn main() {
                 String::new()
             });
 
-            // Uncomment this block to pass the first stage
-            if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
-            } else {
-                println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
-            }
+            // // Uncomment this block to pass the first stage
+            // if !file_contents.is_empty() {
+            //     panic!("Scanner not implemented");
+            // } else {
+            //     println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
+            // }
+            
+            let mut scanner = Scanner::new(file_contents.trim_end());
+            scanner.scan_tokens();
+            scanner.print_tokens();
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
