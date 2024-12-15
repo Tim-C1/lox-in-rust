@@ -1,8 +1,9 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use codecrafters_interpreter::scanner::Scanner;
-
+pub mod scanner;
+pub mod token;
+use scanner::Scanner;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
