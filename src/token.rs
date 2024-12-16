@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum TokenType {
     // Single-character tokens.
