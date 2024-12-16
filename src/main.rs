@@ -1,9 +1,11 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process::exit;
 pub mod scanner;
 pub mod token;
-use scanner::Scanner;
+use scanner::{Scanner, ScannerStatus};
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -34,6 +36,10 @@ fn main() {
             let mut scanner = Scanner::new(file_contents.trim_end());
             scanner.scan_tokens();
             scanner.print_tokens();
+            match &scanner.status {
+                ScannerStatus::ScanSuccess => exit(0),
+                ScannerStatus::UnknowCharErr => exit(65),
+            }
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

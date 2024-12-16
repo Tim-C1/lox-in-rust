@@ -1,4 +1,5 @@
 use crate::token::*;
+use std::fmt;
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -6,6 +7,17 @@ pub struct Scanner<'a> {
     current: usize,
     line: usize,
     tokens: Vec<Token>,
+    pub status: ScannerStatus, 
+}
+
+pub enum ScannerStatus {
+    ScanSuccess,
+    UnknowCharErr,
+}
+
+#[derive(Debug, Clone)]
+enum ScannerError {
+    UnknownChar(usize, char),
 }
 
 impl<'a> Scanner<'a> {
@@ -14,15 +26,24 @@ impl<'a> Scanner<'a> {
             source,
             start: 0,
             current: 0,
-            line: 0,
-            tokens: Vec::new()
+            line: 1,
+            tokens: Vec::new(),
+            status: ScannerStatus::ScanSuccess
         }
     }
 
     pub fn scan_tokens(&mut self) {
         while !self.end() {
             self.start = self.current;
-            self.scan_token();
+            match self.scan_token() {
+                Ok(()) => {},
+                Err(e) =>  {
+                    eprintln!("{}", e);
+                    match e {
+                        ScannerError::UnknownChar(_, _) => self.status = ScannerStatus::UnknowCharErr,
+                    }
+                },
+            }
         }
         self.add_token(TokenType::EOF);
     }
@@ -33,7 +54,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn scan_token(&mut self) {
+    fn scan_token(&mut self) -> Result<(), ScannerError> {
         let c = self.advance();
         match c {
             '(' => self.add_token(TokenType::LEFT_PAREN),
@@ -47,8 +68,9 @@ impl<'a> Scanner<'a> {
             '*' => self.add_token(TokenType::STAR),
             ';' => self.add_token(TokenType::SEMICOLON),
             '\n' => self.line += 1,
-            _ => unimplemented!(),
-        }
+            _ => return Err(ScannerError::UnknownChar(self.line, c)),
+        };
+        Ok(())
     }
 
     fn add_token(&mut self, ttype: TokenType) {
@@ -74,5 +96,13 @@ impl<'a> Scanner<'a> {
 
     fn end(&self) -> bool {
         self.current >= self.source.len()
+    }
+}
+
+impl fmt::Display for ScannerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownChar(line, c) => write!(f, "[line {}] Error: Unexpected character: {}", line, c)
+        }
     }
 }
