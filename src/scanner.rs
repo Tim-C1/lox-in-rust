@@ -7,7 +7,7 @@ pub struct Scanner<'a> {
     current: usize,
     line: usize,
     tokens: Vec<Token>,
-    pub status: ScannerStatus, 
+    pub status: ScannerStatus,
 }
 
 pub enum ScannerStatus {
@@ -28,7 +28,7 @@ impl<'a> Scanner<'a> {
             current: 0,
             line: 1,
             tokens: Vec::new(),
-            status: ScannerStatus::ScanSuccess
+            status: ScannerStatus::ScanSuccess,
         }
     }
 
@@ -36,13 +36,15 @@ impl<'a> Scanner<'a> {
         while !self.end() {
             self.start = self.current;
             match self.scan_token() {
-                Ok(()) => {},
-                Err(e) =>  {
+                Ok(()) => {}
+                Err(e) => {
                     eprintln!("{}", e);
                     match e {
-                        ScannerError::UnknownChar(_, _) => self.status = ScannerStatus::UnknowCharErr,
+                        ScannerError::UnknownChar(_, _) => {
+                            self.status = ScannerStatus::UnknowCharErr
+                        }
                     }
-                },
+                }
             }
         }
         self.add_token(TokenType::EOF);
@@ -67,10 +69,59 @@ impl<'a> Scanner<'a> {
             '+' => self.add_token(TokenType::PLUS),
             '*' => self.add_token(TokenType::STAR),
             ';' => self.add_token(TokenType::SEMICOLON),
+            '!' => {
+                if self.match_then_advance('=') {
+                    self.add_token(TokenType::BANG_EQUAL)
+                } else {
+                    self.add_token(TokenType::BANG)
+                }
+            }
+            '=' => {
+                if self.match_then_advance('=') {
+                    self.add_token(TokenType::EQUAL_EQUAL)
+                } else {
+                    self.add_token(TokenType::EQUAL)
+                }
+            }
+            '<' => {
+                if self.match_then_advance('=') {
+                    self.add_token(TokenType::LESS_EQUAL)
+                } else {
+                    self.add_token(TokenType::LESS)
+                }
+            }
+            '>' => {
+                if self.match_then_advance('=') {
+                    self.add_token(TokenType::GREATER_EQUAL)
+                } else {
+                    self.add_token(TokenType::GREATER)
+                }
+            }
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
         Ok(())
+    }
+
+    fn advance(&mut self) -> char {
+        let c = self.source.as_bytes()[self.current];
+        self.current += 1;
+        char::from(c)
+    }
+
+    fn match_then_advance(&mut self, expected: char) -> bool {
+        if self.end() {
+            return false;
+        }
+        if char::from(self.source.as_bytes()[self.current]) != expected {
+            return false;
+        }
+        self.current += 1;
+        true
+    }
+
+    fn end(&self) -> bool {
+        self.current >= self.source.len()
     }
 
     fn add_token(&mut self, ttype: TokenType) {
@@ -82,27 +133,20 @@ impl<'a> Scanner<'a> {
         self.tokens.push(token);
     }
 
+    #[allow(dead_code)]
     fn add_token_literal(&mut self, ttype: TokenType, literal: String) {
         let lexeme = String::from(&self.source[self.start..self.current]);
         let token = Token::new(ttype, lexeme, Some(literal), self.line);
         self.tokens.push(token);
-    }
-
-    fn advance(&mut self) -> char {
-        let c = self.source.as_bytes()[self.current];
-        self.current += 1;
-        char::from(c)
-    }
-
-    fn end(&self) -> bool {
-        self.current >= self.source.len()
     }
 }
 
 impl fmt::Display for ScannerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownChar(line, c) => write!(f, "[line {}] Error: Unexpected character: {}", line, c)
+            Self::UnknownChar(line, c) => {
+                write!(f, "[line {}] Error: Unexpected character: {}", line, c)
+            }
         }
     }
 }
