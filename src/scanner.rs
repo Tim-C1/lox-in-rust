@@ -43,8 +43,9 @@ impl<'a> Scanner<'a> {
             ',' => self.add_token(TokenType::COMMA),
             '.' => self.add_token(TokenType::DOT),
             '-' => self.add_token(TokenType::MINUS),
-            '+' => self.add_token(TokenType::SEMICOLON),
+            '+' => self.add_token(TokenType::PLUS),
             '*' => self.add_token(TokenType::STAR),
+            ';' => self.add_token(TokenType::SEMICOLON),
             '\n' => self.line += 1,
             _ => unimplemented!(),
         }
