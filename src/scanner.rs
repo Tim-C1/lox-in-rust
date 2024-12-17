@@ -28,6 +28,16 @@ fn is_digit(c: char) -> bool {
     c >= '0' && c <= '9'
 }
 
+#[inline]
+pub fn is_alpha(c: char) -> bool {
+    c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_'
+}
+
+#[inline]
+pub fn is_alpha_numeric(c: char) -> bool {
+    is_alpha(c) || is_digit(c)
+}
+
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a str) -> Self {
         Scanner {
@@ -120,6 +130,7 @@ impl<'a> Scanner<'a> {
             ' ' | '\r' | '\t' => {}
             '"' => return self.string(),
             c if is_digit(c) => self.number(),
+            c if is_alpha(c) => self.identifier(),
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
@@ -181,6 +192,15 @@ impl<'a> Scanner<'a> {
         self.add_token_literal(TokenType::NUMBER, literal);
     }
 
+    fn identifier(&mut self) {
+        while is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+        let text = &self.source[self.start..self.current];
+        let ttype: TokenType = KEYWORDS.get(text).unwrap_or(&TokenType::IDENTIFIER).clone();
+        self.add_token(ttype);
+    }
+
     fn end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -199,7 +219,12 @@ impl<'a> Scanner<'a> {
         match ttype {
             TokenType::STRING => {
                 let lexeme = String::from(&self.source[self.start..self.current]);
-                let token = Token::new(ttype, lexeme, Some(Literal::StringLiteral(literal)), self.line);
+                let token = Token::new(
+                    ttype,
+                    lexeme,
+                    Some(Literal::StringLiteral(literal)),
+                    self.line,
+                );
                 self.tokens.push(token);
             }
             TokenType::NUMBER => {

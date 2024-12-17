@@ -1,7 +1,29 @@
+use lazy_static::lazy_static;
+use std::collections::HashMap;
 use std::fmt;
 
+lazy_static! {
+    pub static ref KEYWORDS: HashMap<&'static str, TokenType> = HashMap::from([
+        ("and", TokenType::AND),
+        ("class", TokenType::CLASS),
+        ("else", TokenType::ELSE),
+        ("false", TokenType::FALSE),
+        ("for", TokenType::FOR),
+        ("if", TokenType::IF),
+        ("nil", TokenType::NIL),
+        ("or", TokenType::OR),
+        ("print", TokenType::PRINT),
+        ("return", TokenType::RETURN),
+        ("super", TokenType::SUPER),
+        ("this", TokenType::THIS),
+        ("true", TokenType::TRUE),
+        ("var", TokenType::VAR),
+        ("while", TokenType::WHILE),
+    ]);
+}
+
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TokenType {
     // Single-character tokens.
     LEFT_PAREN,
