@@ -106,6 +106,7 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::SLASH)
                 }
             }
+            ' ' | '\r' | '\t' => {},
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
