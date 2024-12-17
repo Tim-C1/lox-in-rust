@@ -38,8 +38,7 @@ fn main() {
             scanner.print_tokens();
             match &scanner.status {
                 ScannerStatus::ScanSuccess => exit(0),
-                ScannerStatus::UnknowCharErr => exit(65),
-                ScannerStatus::NonTerminatedStringErr => exit(66),
+                ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
             }
         }
         _ => {

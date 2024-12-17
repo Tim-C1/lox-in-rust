@@ -154,8 +154,8 @@ impl<'a> Scanner<'a> {
         if self.end() {
             return Err(ScannerError::NonTerminatedString(self.line));
         }
-        self.advance();
         let literal = String::from(&self.source[self.start+1..self.current]);
+        self.advance();
         self.add_token_literal(TokenType::STRING, literal);
         Ok(())
     }
