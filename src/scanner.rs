@@ -1,5 +1,6 @@
 use crate::token::*;
 use std::fmt;
+use std::str;
 
 pub struct Scanner<'a> {
     source: &'a str,
@@ -20,6 +21,11 @@ pub enum ScannerStatus {
 enum ScannerError {
     UnknownChar(usize, char),
     NonTerminatedString(usize),
+}
+
+#[inline]
+fn is_digit(c: char) -> bool {
+    c >= '0' && c <= '9'
 }
 
 impl<'a> Scanner<'a> {
@@ -111,8 +117,9 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::SLASH)
                 }
             }
-            ' ' | '\r' | '\t' => {},
-            '"' => return self.string(), 
+            ' ' | '\r' | '\t' => {}
+            '"' => return self.string(),
+            c if is_digit(c) => self.number(),
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
@@ -154,10 +161,24 @@ impl<'a> Scanner<'a> {
         if self.end() {
             return Err(ScannerError::NonTerminatedString(self.line));
         }
-        let literal = String::from(&self.source[self.start+1..self.current]);
+        let literal = String::from(&self.source[self.start + 1..self.current]);
         self.advance();
         self.add_token_literal(TokenType::STRING, literal);
         Ok(())
+    }
+
+    fn number(&mut self) {
+        while is_digit(self.peek()) {
+            self.advance();
+        }
+        if self.peek() == '.' {
+            self.advance();
+            while is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+        let literal = String::from(&self.source[self.start..self.current]);
+        self.add_token_literal(TokenType::NUMBER, literal);
     }
 
     fn end(&self) -> bool {
@@ -175,9 +196,20 @@ impl<'a> Scanner<'a> {
 
     #[allow(dead_code)]
     fn add_token_literal(&mut self, ttype: TokenType, literal: String) {
-        let lexeme = String::from(&self.source[self.start..self.current]);
-        let token = Token::new(ttype, lexeme, Some(literal), self.line);
-        self.tokens.push(token);
+        match ttype {
+            TokenType::STRING => {
+                let lexeme = String::from(&self.source[self.start..self.current]);
+                let token = Token::new(ttype, lexeme, Some(Literal::StringLiteral(literal)), self.line);
+                self.tokens.push(token);
+            }
+            TokenType::NUMBER => {
+                let lexeme = String::from(&self.source[self.start..self.current]);
+                let num_literal = Some(Literal::NumberLiteral(str::parse(&literal).unwrap()));
+                let token = Token::new(ttype, lexeme, num_literal, self.line);
+                self.tokens.push(token);
+            }
+            _ => unimplemented!(),
+        }
     }
 }
 

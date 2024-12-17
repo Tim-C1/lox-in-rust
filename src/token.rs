@@ -61,12 +61,17 @@ impl fmt::Display for TokenType {
 pub struct Token {
     ttype: TokenType,
     lexeme: String,
-    literal: Option<String>,
+    literal: Option<Literal>,
     line: usize,
 }
 
+pub enum Literal {
+    StringLiteral(String),
+    NumberLiteral(f64),
+}
+
 impl Token {
-    pub fn new(ttype: TokenType, lexeme: String, literal: Option<String>, line: usize) -> Self {
+    pub fn new(ttype: TokenType, lexeme: String, literal: Option<Literal>, line: usize) -> Self {
         Token {
             ttype,
             lexeme,
@@ -83,7 +88,12 @@ impl fmt::Display for Token {
             "{} {} {}",
             self.ttype,
             self.lexeme,
-            self.literal.as_ref().map_or("null", String::as_str)
+            self.literal.as_ref().map_or("null".to_string(), |l| {
+                match l {
+                    Literal::StringLiteral(s) => s.clone(),
+                    Literal::NumberLiteral(f) => format!("{:?}", f),
+                }
+            })
         )
     }
 }
