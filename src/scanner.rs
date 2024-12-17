@@ -13,11 +13,13 @@ pub struct Scanner<'a> {
 pub enum ScannerStatus {
     ScanSuccess,
     UnknowCharErr,
+    NonTerminatedStringErr,
 }
 
 #[derive(Debug, Clone)]
 enum ScannerError {
     UnknownChar(usize, char),
+    NonTerminatedString(usize),
 }
 
 impl<'a> Scanner<'a> {
@@ -42,6 +44,9 @@ impl<'a> Scanner<'a> {
                     match e {
                         ScannerError::UnknownChar(_, _) => {
                             self.status = ScannerStatus::UnknowCharErr
+                        }
+                        ScannerError::NonTerminatedString(_) => {
+                            self.status = ScannerStatus::NonTerminatedStringErr
                         }
                     }
                 }
@@ -107,6 +112,7 @@ impl<'a> Scanner<'a> {
                 }
             }
             ' ' | '\r' | '\t' => {},
+            '"' => return self.string(), 
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
@@ -137,6 +143,23 @@ impl<'a> Scanner<'a> {
             char::from(self.source.as_bytes()[self.current])
         }
     }
+
+    fn string(&mut self) -> Result<(), ScannerError> {
+        while self.peek() != '"' && !self.end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+        if self.end() {
+            Err(ScannerError::NonTerminatedString(self.line))
+        } else {
+            let literal = String::from(&self.source[self.start+1..self.current]);
+            self.add_token_literal(TokenType::STRING, literal);
+            Ok(())
+        }
+    }
+
     fn end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -163,6 +186,9 @@ impl fmt::Display for ScannerError {
         match self {
             Self::UnknownChar(line, c) => {
                 write!(f, "[line {}] Error: Unexpected character: {}", line, c)
+            }
+            Self::NonTerminatedString(line) => {
+                write!(f, "[line {}] Error: Unterminated string.", line)
             }
         }
     }

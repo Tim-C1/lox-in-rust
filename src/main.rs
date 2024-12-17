@@ -39,6 +39,7 @@ fn main() {
             match &scanner.status {
                 ScannerStatus::ScanSuccess => exit(0),
                 ScannerStatus::UnknowCharErr => exit(65),
+                ScannerStatus::NonTerminatedStringErr => exit(66),
             }
         }
         _ => {
