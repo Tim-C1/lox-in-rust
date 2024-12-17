@@ -152,12 +152,12 @@ impl<'a> Scanner<'a> {
             self.advance();
         }
         if self.end() {
-            Err(ScannerError::NonTerminatedString(self.line))
-        } else {
-            let literal = String::from(&self.source[self.start+1..self.current]);
-            self.add_token_literal(TokenType::STRING, literal);
-            Ok(())
+            return Err(ScannerError::NonTerminatedString(self.line));
         }
+        self.advance();
+        let literal = String::from(&self.source[self.start+1..self.current]);
+        self.add_token_literal(TokenType::STRING, literal);
+        Ok(())
     }
 
     fn end(&self) -> bool {
