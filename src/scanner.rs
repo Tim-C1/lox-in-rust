@@ -97,6 +97,15 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::GREATER)
                 }
             }
+            '/' => {
+                if self.match_then_advance('/') {
+                    while self.peek() != '\n' && !self.end() {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(TokenType::SLASH)
+                }
+            }
             '\n' => self.line += 1,
             _ => return Err(ScannerError::UnknownChar(self.line, c)),
         };
@@ -120,6 +129,13 @@ impl<'a> Scanner<'a> {
         true
     }
 
+    fn peek(&self) -> char {
+        if self.end() {
+            '\0'
+        } else {
+            char::from(self.source.as_bytes()[self.current])
+        }
+    }
     fn end(&self) -> bool {
         self.current >= self.source.len()
     }
