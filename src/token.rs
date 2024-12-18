@@ -24,7 +24,7 @@ lazy_static! {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LEFT_PAREN,
@@ -81,16 +81,20 @@ impl fmt::Display for TokenType {
     }
 }
 
+#[derive(Clone)]
 pub struct Token {
-    ttype: TokenType,
-    lexeme: String,
-    literal: Option<Literal>,
+    pub ttype: TokenType,
+    pub lexeme: String,
+    pub literal: Option<Literal>,
     line: usize,
 }
 
+#[derive(Clone)]
 pub enum Literal {
     StringLiteral(String),
     NumberLiteral(f64),
+    BoolLiteral(bool),
+    NilLiteral,
 }
 
 impl Token {
@@ -104,6 +108,18 @@ impl Token {
     }
 }
 
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Literal::StringLiteral(s) => s.clone(),
+            Literal::NumberLiteral(f) => format!("{:?}", f),
+            Literal::BoolLiteral(b) => format!("{:?}", b),
+            Literal::NilLiteral => "nil".to_string(),
+        };
+        write!(f, "{}", s)
+    }
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -111,12 +127,7 @@ impl fmt::Display for Token {
             "{} {} {}",
             self.ttype,
             self.lexeme,
-            self.literal.as_ref().map_or("null".to_string(), |l| {
-                match l {
-                    Literal::StringLiteral(s) => s.clone(),
-                    Literal::NumberLiteral(f) => format!("{:?}", f),
-                }
-            })
+            self.literal.as_ref().map_or("null".to_string(), |s| format!("{}", s))
         )
     }
 }

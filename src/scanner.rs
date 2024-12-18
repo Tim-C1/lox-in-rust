@@ -7,7 +7,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     pub status: ScannerStatus,
 }
 

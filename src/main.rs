@@ -1,10 +1,15 @@
+pub mod scanner;
+pub mod token;
+pub mod expression;
+pub mod parser;
+
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
-pub mod scanner;
-pub mod token;
 use scanner::{Scanner, ScannerStatus};
+use expression::*;
+use parser::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,6 +45,20 @@ fn main() {
                 ScannerStatus::ScanSuccess => exit(0),
                 ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
             }
+        }
+        "parse" => {
+            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
+
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                String::new()
+            });
+            let mut scanner = Scanner::new(file_contents.trim_end());
+            scanner.scan_tokens();
+            let mut parser = Parser::new(scanner.tokens);
+            let expression = parser.parse();
+            let ast = expression.print();
+            println!("{}", ast);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
