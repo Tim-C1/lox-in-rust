@@ -86,7 +86,6 @@ pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,
     pub literal: Option<Literal>,
-    line: usize,
 }
 
 #[derive(Clone)]
@@ -98,12 +97,11 @@ pub enum Literal {
 }
 
 impl Token {
-    pub fn new(ttype: TokenType, lexeme: String, literal: Option<Literal>, line: usize) -> Self {
+    pub fn new(ttype: TokenType, lexeme: String, literal: Option<Literal>) -> Self {
         Token {
             ttype,
             lexeme,
             literal,
-            line,
         }
     }
 }

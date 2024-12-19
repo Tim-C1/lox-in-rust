@@ -8,7 +8,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
 use scanner::{Scanner, ScannerStatus};
-use expression::*;
 use parser::*;
 
 fn main() {
@@ -31,13 +30,6 @@ fn main() {
                 String::new()
             });
 
-            // // Uncomment this block to pass the first stage
-            // if !file_contents.is_empty() {
-            //     panic!("Scanner not implemented");
-            // } else {
-            //     println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
-            // }
-            
             let mut scanner = Scanner::new(file_contents.trim_end());
             scanner.scan_tokens();
             scanner.print_tokens();
@@ -55,10 +47,20 @@ fn main() {
             });
             let mut scanner = Scanner::new(file_contents.trim_end());
             scanner.scan_tokens();
+            // scanner.print_tokens();
+            match &scanner.status {
+                ScannerStatus::ScanSuccess => {},
+                ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
+            }
             let mut parser = Parser::new(scanner.tokens);
-            let expression = parser.parse();
-            let ast = expression.print();
-            println!("{}", ast);
+            let expression_rst = parser.parse();
+            match expression_rst {
+                Ok(expr) => {
+                    let ast = expr.print();
+                    println!("{}", ast);
+                }
+                Err(_) => exit(65),
+            }
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

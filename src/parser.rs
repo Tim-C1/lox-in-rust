@@ -8,13 +8,15 @@ pub struct Parser {
 }
 
 pub enum ParserError {
-    UnmatchedParen
+    UnmatchedParen,
+    ExpectExpr,
 }
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnmatchedParen => write!(f, "UnmatchedParen detected")
+            Self::UnmatchedParen => write!(f, "UnmatchedParen detected"),
+            Self::ExpectExpr => write!(f, "Expect expression"),
         }
     }
 }
@@ -24,26 +26,26 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Box<dyn Expr> {
+    pub fn parse(&mut self) -> Result<Box<dyn Expr>, ParserError> {
         self.expression()
     }
 
-    fn expression(&mut self) -> Box<dyn Expr> {
+    fn expression(&mut self) -> Result<Box<dyn Expr>, ParserError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Box<dyn Expr> {
-        let mut expr = self.comparison();
+    fn equality(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+        let mut expr = self.comparison()?;
         while self.match_then_advance(vec![TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL]) {
             let operator = self.previous().clone();
-            let right = self.comparison();
+            let right = self.comparison()?;
             expr = Box::new(BinaryExpr::new(expr, operator, right));
         }
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&mut self) -> Box<dyn Expr> {
-        let mut expr = self.term();
+    fn comparison(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+        let mut expr = self.term()?;
         while self.match_then_advance(vec![
             TokenType::GREATER,
             TokenType::GREATER_EQUAL,
@@ -51,64 +53,73 @@ impl Parser {
             TokenType::LESS_EQUAL,
         ]) {
             let operator = self.previous().clone();
-            let right = self.term();
+            let right = self.term()?;
             expr = Box::new(BinaryExpr::new(expr, operator, right));
         }
-        expr
+        Ok(expr)
     }
 
-    fn term(&mut self) -> Box<dyn Expr> {
-        let mut expr = self.factor();
+    fn term(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+        let mut expr = self.factor()?;
         while self.match_then_advance(vec![TokenType::MINUS, TokenType::PLUS]) {
             let operator = self.previous().clone();
-            let right = self.factor();
+            let right = self.factor()?;
             expr = Box::new(BinaryExpr::new(expr, operator, right));
         }
-        expr
+        Ok(expr)
     }
 
-    fn factor(&mut self) -> Box<dyn Expr> {
-        let mut expr = self.unary();
+    fn factor(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+        let mut expr = self.unary()?;
         while self.match_then_advance(vec![TokenType::SLASH, TokenType::STAR]) {
             let operator = self.previous().clone();
-            let right = self.unary();
-            expr = Box::new(BinaryExpr::new(expr, operator, right));
+            let right = self.unary()?;
+            expr = Box::new(BinaryExpr::new(expr, operator, right))
         }
-        expr
+        Ok(expr)
     }
 
-    fn unary(&mut self) -> Box<dyn Expr> {
+    fn unary(&mut self) -> Result<Box<dyn Expr>, ParserError> {
         if self.match_then_advance(vec![TokenType::BANG, TokenType::MINUS]) {
             let operator = self.previous().clone();
-            let right = self.unary();
-            Box::new(UnaryExpr::new(operator, right))
+            let right = self.unary()?;
+            Ok(Box::new(UnaryExpr::new(operator, right)))
         } else {
             self.primary()
         }
     }
 
-    fn primary(&mut self) -> Box<dyn Expr> {
+    fn primary(&mut self) -> Result<Box<dyn Expr>, ParserError> {
         if self.match_then_advance(vec![TokenType::FALSE]) {
-            return Box::new(LiteralExpr::new(Literal::BoolLiteral(false)));
+            return Ok(Box::new(LiteralExpr::new(Literal::BoolLiteral(false))));
         }
         if self.match_then_advance(vec![TokenType::TRUE]) {
-            return Box::new(LiteralExpr::new(Literal::BoolLiteral(true)));
+            return Ok(Box::new(LiteralExpr::new(Literal::BoolLiteral(true))));
         }
         if self.match_then_advance(vec![TokenType::NIL]) {
-            return Box::new(LiteralExpr::new(Literal::NilLiteral));
+            return Ok(Box::new(LiteralExpr::new(Literal::NilLiteral)));
         }
         if self.match_then_advance(vec![TokenType::NUMBER, TokenType::STRING]) {
             let literal = self.previous().literal.clone().unwrap();
-            return Box::new(LiteralExpr::new(literal));
+            return Ok(Box::new(LiteralExpr::new(literal)))
+        }
+        if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
+            let literal = self.previous().lexeme.clone();
+            return Ok(Box::new(LiteralExpr::new(Literal::StringLiteral(literal))))
         }
         if self.match_then_advance(vec![TokenType::LEFT_PAREN]) {
-            let expr = self.expression();
+            let expr = self.expression()?;
             match self.consume(TokenType::RIGHT_PAREN) {
-                Ok(_) => return Box::new(GroupingExpr::new(expr)),
-                Err(e) => panic!("{}", e),
+                Ok(_) => return Ok(Box::new(GroupingExpr::new(expr))),
+                Err(e) => {
+                    eprintln!("{e}");
+                    Err(e)
+                }
             }
         } else {
-            unreachable!()
+            let e = ParserError::UnmatchedParen;
+            eprintln!("{e}");
+            Err(e)
         }
     }
 
