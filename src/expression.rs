@@ -1,5 +1,6 @@
 use crate::token::*;
 use std::boxed::Box;
+use std::fmt;
 
 pub trait Visitor<R> {
     fn visit_binary(&mut self, binary: &Binary) -> R;
@@ -135,145 +136,259 @@ pub mod ast_printer {
 
 pub mod interpreter {
     use super::*;
+    pub enum RuntimeError {
+        InvalidOperand(TokenType, String, usize),
+    }
+    impl fmt::Display for RuntimeError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                RuntimeError::InvalidOperand(_, desc, line) => {
+                    write!(f, "{}\n[line {}]", desc, line)
+                }
+            }
+        }
+    }
     pub struct Interpreter;
-    impl Visitor<LiteralValue> for Interpreter {
-        fn visit_binary(&mut self, binary: &Binary) -> LiteralValue {
-            let left_val = self.evaluate(&binary.left);
-            let right_val = self.evaluate(&binary.right);
+    impl Visitor<Result<LiteralValue, RuntimeError>> for Interpreter {
+        fn visit_binary(&mut self, binary: &Binary) -> Result<LiteralValue, RuntimeError> {
+            let left_val = self.evaluate(&binary.left)?;
+            let right_val = self.evaluate(&binary.right)?;
             match binary.operator.ttype {
                 TokenType::MINUS => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::NumberLiteral(l - r)
+                    Ok(LiteralValue::NumberLiteral(l - r))
                 }
                 TokenType::PLUS => match left_val {
                     LiteralValue::NumberLiteral(l) => {
                         match right_val {
                             LiteralValue::NumberLiteral(r) => {
-                                return LiteralValue::NumberLiteral(l + r)
+                                return Ok(LiteralValue::NumberLiteral(l + r))
                             }
-                            _ => panic!(
-                                "runtime error: expected numeric rhs literal for \"+\" operand"
-                            ),
+                            _ => {
+                                return Err(RuntimeError::InvalidOperand(
+                                    TokenType::MINUS,
+                                    String::from("Operands must be two numbers or two strings."),
+                                    binary.operator.line,
+                                ))
+                            }
                         };
                     }
                     LiteralValue::StringLiteral(l) => {
                         match right_val {
                             LiteralValue::StringLiteral(r) => {
-                                return LiteralValue::StringLiteral(l + &r)
+                                return Ok(LiteralValue::StringLiteral(l + &r))
                             }
-                            _ => panic!(
-                                "runtime error: expected string rhs literal for \"+\" operand"
-                            ),
+                            _ => {
+                                return Err(RuntimeError::InvalidOperand(
+                                    TokenType::MINUS,
+                                    String::from("Operands must be two numbers or two strings."),
+                                    binary.operator.line,
+                                ))
+                            }
                         };
                     }
-                    _ => panic!("runtime error: expected numeric/string literal for \"+\" operand"),
+                    _ => {
+                        return Err(RuntimeError::InvalidOperand(
+                            TokenType::MINUS,
+                            String::from("Operands must be two numbers or two strings."),
+                            binary.operator.line,
+                        ))
+                    }
                 },
                 TokenType::STAR => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"*\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"*\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::NumberLiteral(l * r)
+                    Ok(LiteralValue::NumberLiteral(l * r))
                 }
                 TokenType::SLASH => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"/\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"/\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::NumberLiteral(l / r)
+                    Ok(LiteralValue::NumberLiteral(l / r))
                 }
                 TokenType::GREATER => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::BoolLiteral(l > r)
+                    Ok(LiteralValue::BoolLiteral(l > r))
                 }
                 TokenType::GREATER_EQUAL => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::BoolLiteral(l >= r)
+                    Ok(LiteralValue::BoolLiteral(l >= r))
                 }
                 TokenType::LESS => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::BoolLiteral(l < r)
+                    Ok(LiteralValue::BoolLiteral(l < r))
                 }
                 TokenType::LESS_EQUAL => {
                     let l = match left_val {
                         LiteralValue::NumberLiteral(l) => l,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
                     let r = match right_val {
                         LiteralValue::NumberLiteral(r) => r,
-                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                        _ => {
+                            return Err(RuntimeError::InvalidOperand(
+                                TokenType::MINUS,
+                                String::from("Operands must be a number."),
+                                binary.operator.line,
+                            ))
+                        }
                     };
-                    LiteralValue::BoolLiteral(l <= r)
+                    Ok(LiteralValue::BoolLiteral(l <= r))
                 }
-                TokenType::BANG_EQUAL => {
-                    LiteralValue::BoolLiteral(!self.is_equal(&left_val, &right_val))
-                }
-                TokenType::EQUAL_EQUAL => {
-                    LiteralValue::BoolLiteral(self.is_equal(&left_val, &right_val))
-                }
+                TokenType::BANG_EQUAL => Ok(LiteralValue::BoolLiteral(
+                    !self.is_equal(&left_val, &right_val),
+                )),
+                TokenType::EQUAL_EQUAL => Ok(LiteralValue::BoolLiteral(
+                    self.is_equal(&left_val, &right_val),
+                )),
                 _ => unimplemented!(),
             }
         }
 
-        fn visit_unary(&mut self, unary: &Unary) -> LiteralValue {
-            let right_val = self.evaluate(&unary.right);
+        fn visit_unary(&mut self, unary: &Unary) -> Result<LiteralValue, RuntimeError> {
+            let right_val = self.evaluate(&unary.right)?;
             match unary.operator.ttype {
                 TokenType::MINUS => match right_val {
-                    LiteralValue::NumberLiteral(f) => LiteralValue::NumberLiteral(-f),
-                    _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    LiteralValue::NumberLiteral(f) => Ok(LiteralValue::NumberLiteral(-f)),
+                    _ => Err(RuntimeError::InvalidOperand(
+                        TokenType::MINUS,
+                        String::from("Operand must be a number."),
+                        unary.operator.line,
+                    )),
                 },
-                TokenType::BANG => LiteralValue::BoolLiteral(!self.is_true(&right_val)),
+                TokenType::BANG => Ok(LiteralValue::BoolLiteral(!self.is_true(&right_val))),
                 _ => unimplemented!(),
             }
         }
 
-        fn visit_literal(&mut self, literal: &Literal) -> LiteralValue {
-            literal.value.clone()
+        fn visit_literal(&mut self, literal: &Literal) -> Result<LiteralValue, RuntimeError> {
+            Ok(literal.value.clone())
         }
 
-        fn visit_grouping(&mut self, grouping: &Grouping) -> LiteralValue {
+        fn visit_grouping(&mut self, grouping: &Grouping) -> Result<LiteralValue, RuntimeError> {
             self.evaluate(&grouping.expression)
         }
     }
 
     impl Interpreter {
-        fn evaluate(&mut self, expr: &Expr) -> LiteralValue {
+        fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeError> {
             expr.accept(self)
         }
 

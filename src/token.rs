@@ -84,6 +84,7 @@ impl fmt::Display for TokenType {
 #[derive(Clone)]
 pub struct Token {
     pub ttype: TokenType,
+    pub line: usize,
     pub lexeme: String,
     pub literal: Option<LiteralValue>,
 }
@@ -97,9 +98,15 @@ pub enum LiteralValue {
 }
 
 impl Token {
-    pub fn new(ttype: TokenType, lexeme: String, literal: Option<LiteralValue>) -> Self {
+    pub fn new(
+        ttype: TokenType,
+        line: usize,
+        lexeme: String,
+        literal: Option<LiteralValue>,
+    ) -> Self {
         Token {
             ttype,
+            line,
             lexeme,
             literal,
         }

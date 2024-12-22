@@ -210,7 +210,7 @@ impl<'a> Scanner<'a> {
             TokenType::EOF => String::from(""),
             _ => String::from(&self.source[self.start..self.current]),
         };
-        let token = Token::new(ttype, lexeme, None);
+        let token = Token::new(ttype, self.line, lexeme, None);
         self.tokens.push(token);
     }
 
@@ -219,13 +219,18 @@ impl<'a> Scanner<'a> {
         match ttype {
             TokenType::STRING => {
                 let lexeme = String::from(&self.source[self.start..self.current]);
-                let token = Token::new(ttype, lexeme, Some(LiteralValue::StringLiteral(literal)));
+                let token = Token::new(
+                    ttype,
+                    self.line,
+                    lexeme,
+                    Some(LiteralValue::StringLiteral(literal)),
+                );
                 self.tokens.push(token);
             }
             TokenType::NUMBER => {
                 let lexeme = String::from(&self.source[self.start..self.current]);
                 let num_literal = Some(LiteralValue::NumberLiteral(str::parse(&literal).unwrap()));
-                let token = Token::new(ttype, lexeme, num_literal);
+                let token = Token::new(ttype, self.line, lexeme, num_literal);
                 self.tokens.push(token);
             }
             _ => unimplemented!(),
