@@ -296,17 +296,17 @@ pub mod interpreter {
                 match l {
                     LiteralValue::NumberLiteral(l) => match r {
                         LiteralValue::NumberLiteral(r) => l == r,
-                        _ => unimplemented!(),
+                        _ => false,
                     },
                     LiteralValue::BoolLiteral(l) => match r {
                         LiteralValue::BoolLiteral(r) => l == r,
-                        _ => unimplemented!(),
+                        _ => false,
                     },
                     LiteralValue::StringLiteral(l) => match r {
                         LiteralValue::StringLiteral(r) => l == r,
-                        _ => unimplemented!(),
+                        _ => false,
                     },
-                    _ => unimplemented!(),
+                    _ => unreachable!(),
                 }
             }
         }
