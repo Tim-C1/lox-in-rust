@@ -26,25 +26,25 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    pub fn parse(&mut self) -> Result<Box<Expr>, ParserError> {
         self.expression()
     }
 
-    fn expression(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn expression(&mut self) -> Result<Box<Expr>, ParserError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn equality(&mut self) -> Result<Box<Expr>, ParserError> {
         let mut expr = self.comparison()?;
         while self.match_then_advance(vec![TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL]) {
             let operator = self.previous().clone();
             let right = self.comparison()?;
-            expr = Box::new(BinaryExpr::new(expr, operator, right));
+            expr = Box::new(Expr::BinaryExpr(Binary::new(expr, operator, right)));
         }
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn comparison(&mut self) -> Result<Box<Expr>, ParserError> {
         let mut expr = self.term()?;
         while self.match_then_advance(vec![
             TokenType::GREATER,
@@ -54,63 +54,71 @@ impl Parser {
         ]) {
             let operator = self.previous().clone();
             let right = self.term()?;
-            expr = Box::new(BinaryExpr::new(expr, operator, right));
+            expr = Box::new(Expr::BinaryExpr(Binary::new(expr, operator, right)));
         }
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn term(&mut self) -> Result<Box<Expr>, ParserError> {
         let mut expr = self.factor()?;
         while self.match_then_advance(vec![TokenType::MINUS, TokenType::PLUS]) {
             let operator = self.previous().clone();
             let right = self.factor()?;
-            expr = Box::new(BinaryExpr::new(expr, operator, right));
+            expr = Box::new(Expr::BinaryExpr(Binary::new(expr, operator, right)));
         }
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn factor(&mut self) -> Result<Box<Expr>, ParserError> {
         let mut expr = self.unary()?;
         while self.match_then_advance(vec![TokenType::SLASH, TokenType::STAR]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Box::new(BinaryExpr::new(expr, operator, right))
+            expr = Box::new(Expr::BinaryExpr(Binary::new(expr, operator, right)))
         }
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn unary(&mut self) -> Result<Box<Expr>, ParserError> {
         if self.match_then_advance(vec![TokenType::BANG, TokenType::MINUS]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            Ok(Box::new(UnaryExpr::new(operator, right)))
+            Ok(Box::new(Expr::UnaryExpr(Unary::new(operator, right))))
         } else {
             self.primary()
         }
     }
 
-    fn primary(&mut self) -> Result<Box<dyn Expr>, ParserError> {
+    fn primary(&mut self) -> Result<Box<Expr>, ParserError> {
         if self.match_then_advance(vec![TokenType::FALSE]) {
-            return Ok(Box::new(LiteralExpr::new(Literal::BoolLiteral(false))));
+            return Ok(Box::new(Expr::LiteralExpr(Literal::new(
+                LiteralValue::BoolLiteral(false),
+            ))));
         }
         if self.match_then_advance(vec![TokenType::TRUE]) {
-            return Ok(Box::new(LiteralExpr::new(Literal::BoolLiteral(true))));
+            return Ok(Box::new(Expr::LiteralExpr(Literal::new(
+                LiteralValue::BoolLiteral(true),
+            ))));
         }
         if self.match_then_advance(vec![TokenType::NIL]) {
-            return Ok(Box::new(LiteralExpr::new(Literal::NilLiteral)));
+            return Ok(Box::new(Expr::LiteralExpr(Literal::new(
+                LiteralValue::NilLiteral,
+            ))));
         }
         if self.match_then_advance(vec![TokenType::NUMBER, TokenType::STRING]) {
             let literal = self.previous().literal.clone().unwrap();
-            return Ok(Box::new(LiteralExpr::new(literal)))
+            return Ok(Box::new(Expr::LiteralExpr(Literal::new(literal))));
         }
         if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
             let literal = self.previous().lexeme.clone();
-            return Ok(Box::new(LiteralExpr::new(Literal::StringLiteral(literal))))
+            return Ok(Box::new(Expr::LiteralExpr(Literal::new(
+                LiteralValue::StringLiteral(literal),
+            ))));
         }
         if self.match_then_advance(vec![TokenType::LEFT_PAREN]) {
             let expr = self.expression()?;
             match self.consume(TokenType::RIGHT_PAREN) {
-                Ok(_) => return Ok(Box::new(GroupingExpr::new(expr))),
+                Ok(_) => return Ok(Box::new(Expr::GroupingExpr(Grouping::new(expr)))),
                 Err(e) => {
                     eprintln!("{e}");
                     Err(e)

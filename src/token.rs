@@ -85,11 +85,11 @@ impl fmt::Display for TokenType {
 pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,
-    pub literal: Option<Literal>,
+    pub literal: Option<LiteralValue>,
 }
 
 #[derive(Clone)]
-pub enum Literal {
+pub enum LiteralValue {
     StringLiteral(String),
     NumberLiteral(f64),
     BoolLiteral(bool),
@@ -97,7 +97,7 @@ pub enum Literal {
 }
 
 impl Token {
-    pub fn new(ttype: TokenType, lexeme: String, literal: Option<Literal>) -> Self {
+    pub fn new(ttype: TokenType, lexeme: String, literal: Option<LiteralValue>) -> Self {
         Token {
             ttype,
             lexeme,
@@ -106,13 +106,13 @@ impl Token {
     }
 }
 
-impl fmt::Display for Literal {
+impl fmt::Display for LiteralValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Literal::StringLiteral(s) => s.clone(),
-            Literal::NumberLiteral(f) => format!("{:?}", f),
-            Literal::BoolLiteral(b) => format!("{:?}", b),
-            Literal::NilLiteral => "nil".to_string(),
+            LiteralValue::StringLiteral(s) => s.clone(),
+            LiteralValue::NumberLiteral(f) => format!("{:?}", f),
+            LiteralValue::BoolLiteral(b) => format!("{:?}", b),
+            LiteralValue::NilLiteral => "nil".to_string(),
         };
         write!(f, "{}", s)
     }
@@ -125,7 +125,9 @@ impl fmt::Display for Token {
             "{} {} {}",
             self.ttype,
             self.lexeme,
-            self.literal.as_ref().map_or("null".to_string(), |s| format!("{}", s))
+            self.literal
+                .as_ref()
+                .map_or("null".to_string(), |s| format!("{}", s))
         )
     }
 }

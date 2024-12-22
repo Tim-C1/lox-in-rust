@@ -1,14 +1,17 @@
-pub mod scanner;
-pub mod token;
 pub mod expression;
 pub mod parser;
+pub mod scanner;
+pub mod token;
 
+use parser::*;
+use scanner::{Scanner, ScannerStatus};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
-use scanner::{Scanner, ScannerStatus};
-use parser::*;
+
+use self::expression::ast_printer;
+use self::expression::Accept;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -49,14 +52,15 @@ fn main() {
             scanner.scan_tokens();
             // scanner.print_tokens();
             match &scanner.status {
-                ScannerStatus::ScanSuccess => {},
+                ScannerStatus::ScanSuccess => {}
                 ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
             }
             let mut parser = Parser::new(scanner.tokens);
             let expression_rst = parser.parse();
             match expression_rst {
                 Ok(expr) => {
-                    let ast = expr.print();
+                    let mut printer = ast_printer::AstPrinter;
+                    let ast = expr.accept(&mut printer);
                     println!("{}", ast);
                 }
                 Err(_) => exit(65),

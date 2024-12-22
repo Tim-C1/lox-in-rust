@@ -219,16 +219,12 @@ impl<'a> Scanner<'a> {
         match ttype {
             TokenType::STRING => {
                 let lexeme = String::from(&self.source[self.start..self.current]);
-                let token = Token::new(
-                    ttype,
-                    lexeme,
-                    Some(Literal::StringLiteral(literal)),
-                );
+                let token = Token::new(ttype, lexeme, Some(LiteralValue::StringLiteral(literal)));
                 self.tokens.push(token);
             }
             TokenType::NUMBER => {
                 let lexeme = String::from(&self.source[self.start..self.current]);
-                let num_literal = Some(Literal::NumberLiteral(str::parse(&literal).unwrap()));
+                let num_literal = Some(LiteralValue::NumberLiteral(str::parse(&literal).unwrap()));
                 let token = Token::new(ttype, lexeme, num_literal);
                 self.tokens.push(token);
             }
