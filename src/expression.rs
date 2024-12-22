@@ -132,3 +132,183 @@ pub mod ast_printer {
         }
     }
 }
+
+pub mod interpreter {
+    use super::*;
+    pub struct Interpreter;
+    impl Visitor<LiteralValue> for Interpreter {
+        fn visit_binary(&mut self, binary: &Binary) -> LiteralValue {
+            let left_val = self.evaluate(&binary.left);
+            let right_val = self.evaluate(&binary.right);
+            match binary.operator.ttype {
+                TokenType::MINUS => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    LiteralValue::NumberLiteral(l - r)
+                }
+                TokenType::PLUS => match left_val {
+                    LiteralValue::NumberLiteral(l) => {
+                        match right_val {
+                            LiteralValue::NumberLiteral(r) => {
+                                return LiteralValue::NumberLiteral(l + r)
+                            }
+                            _ => panic!(
+                                "runtime error: expected numeric rhs literal for \"+\" operand"
+                            ),
+                        };
+                    }
+                    LiteralValue::StringLiteral(l) => {
+                        match right_val {
+                            LiteralValue::StringLiteral(r) => {
+                                return LiteralValue::StringLiteral(l + &r)
+                            }
+                            _ => panic!(
+                                "runtime error: expected string rhs literal for \"+\" operand"
+                            ),
+                        };
+                    }
+                    _ => panic!("runtime error: expected numeric/string literal for \"+\" operand"),
+                },
+                TokenType::STAR => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"*\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"*\" operand"),
+                    };
+                    LiteralValue::NumberLiteral(l * r)
+                }
+                TokenType::SLASH => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"/\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"/\" operand"),
+                    };
+                    LiteralValue::NumberLiteral(l / r)
+                }
+                TokenType::GREATER => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    LiteralValue::BoolLiteral(l > r)
+                }
+                TokenType::GREATER_EQUAL => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    LiteralValue::BoolLiteral(l >= r)
+                }
+                TokenType::LESS => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    LiteralValue::BoolLiteral(l < r)
+                }
+                TokenType::LESS_EQUAL => {
+                    let l = match left_val {
+                        LiteralValue::NumberLiteral(l) => l,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    let r = match right_val {
+                        LiteralValue::NumberLiteral(r) => r,
+                        _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                    };
+                    LiteralValue::BoolLiteral(l <= r)
+                }
+                TokenType::BANG_EQUAL => {
+                    LiteralValue::BoolLiteral(self.is_equal(&left_val, &right_val))
+                }
+                TokenType::EQUAL_EQUAL => {
+                    LiteralValue::BoolLiteral(!self.is_equal(&left_val, &right_val))
+                }
+                _ => unimplemented!(),
+            }
+        }
+
+        fn visit_unary(&mut self, unary: &Unary) -> LiteralValue {
+            let right_val = self.evaluate(&unary.right);
+            match unary.operator.ttype {
+                TokenType::MINUS => match right_val {
+                    LiteralValue::NumberLiteral(f) => LiteralValue::NumberLiteral(-f),
+                    _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
+                },
+                TokenType::BANG => self.is_true(&right_val),
+                _ => unimplemented!(),
+            }
+        }
+
+        fn visit_literal(&mut self, literal: &Literal) -> LiteralValue {
+            literal.value.clone()
+        }
+
+        fn visit_grouping(&mut self, grouping: &Grouping) -> LiteralValue {
+            self.evaluate(&grouping.expression)
+        }
+    }
+
+    impl Interpreter {
+        fn evaluate(&mut self, expr: &Expr) -> LiteralValue {
+            expr.accept(self)
+        }
+
+        fn is_true(&mut self, literal_value: &LiteralValue) -> LiteralValue {
+            LiteralValue::BoolLiteral(match literal_value {
+                LiteralValue::NumberLiteral(_) | LiteralValue::StringLiteral(_) => true,
+                LiteralValue::BoolLiteral(b) => *b,
+                LiteralValue::NilLiteral => false,
+            })
+        }
+
+        fn is_equal(&mut self, l: &LiteralValue, r: &LiteralValue) -> bool {
+            if matches!(l, LiteralValue::NilLiteral) {
+                if matches!(r, LiteralValue::NilLiteral) {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                match l {
+                    LiteralValue::NumberLiteral(l) => match r {
+                        LiteralValue::NumberLiteral(r) => l == r,
+                        _ => unimplemented!(),
+                    },
+                    LiteralValue::BoolLiteral(l) => match r {
+                        LiteralValue::BoolLiteral(r) => l == r,
+                        _ => unimplemented!(),
+                    },
+                    LiteralValue::StringLiteral(l) => match r {
+                        LiteralValue::StringLiteral(r) => l == r,
+                        _ => unimplemented!(),
+                    },
+                    _ => unimplemented!(),
+                }
+            }
+        }
+    }
+}

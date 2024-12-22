@@ -11,6 +11,7 @@ use std::io::{self, Write};
 use std::process::exit;
 
 use self::expression::ast_printer;
+use self::expression::interpreter;
 use self::expression::Accept;
 
 fn main() {
@@ -62,6 +63,35 @@ fn main() {
                     let mut printer = ast_printer::AstPrinter;
                     let ast = expr.accept(&mut printer);
                     println!("{}", ast);
+                }
+                Err(_) => exit(65),
+            }
+        }
+        "evaluate" => {
+            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
+
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                String::new()
+            });
+            let mut scanner = Scanner::new(file_contents.trim_end());
+            scanner.scan_tokens();
+            match &scanner.status {
+                ScannerStatus::ScanSuccess => {}
+                ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
+            }
+            let mut parser = Parser::new(scanner.tokens);
+            let expression_rst = parser.parse();
+            match expression_rst {
+                Ok(expr) => {
+                    let mut evaluator = interpreter::Interpreter;
+                    let rst = expr.accept(&mut evaluator);
+                    match rst {
+                        token::LiteralValue::NumberLiteral(n) => println!("{}", n),
+                        token::LiteralValue::StringLiteral(s) => println!("{:?}", s),
+                        token::LiteralValue::BoolLiteral(b) => println!("{:?}", b),
+                        token::LiteralValue::NilLiteral => println!("nil"),
+                    }
                 }
                 Err(_) => exit(65),
             }
