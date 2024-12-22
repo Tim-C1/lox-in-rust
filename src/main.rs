@@ -87,9 +87,9 @@ fn main() {
                     let mut evaluator = interpreter::Interpreter;
                     let rst = expr.accept(&mut evaluator);
                     match rst {
-                        token::LiteralValue::NumberLiteral(n) => println!("{}", n),
-                        token::LiteralValue::StringLiteral(s) => println!("{:?}", s),
-                        token::LiteralValue::BoolLiteral(b) => println!("{:?}", b),
+                        token::LiteralValue::NumberLiteral(n) => println!("{n}"),
+                        token::LiteralValue::StringLiteral(s) => println!("{s}"),
+                        token::LiteralValue::BoolLiteral(b) => println!("{b}"),
                         token::LiteralValue::NilLiteral => println!("nil"),
                     }
                 }
