@@ -242,10 +242,10 @@ pub mod interpreter {
                     LiteralValue::BoolLiteral(l <= r)
                 }
                 TokenType::BANG_EQUAL => {
-                    LiteralValue::BoolLiteral(self.is_equal(&left_val, &right_val))
+                    LiteralValue::BoolLiteral(!self.is_equal(&left_val, &right_val))
                 }
                 TokenType::EQUAL_EQUAL => {
-                    LiteralValue::BoolLiteral(!self.is_equal(&left_val, &right_val))
+                    LiteralValue::BoolLiteral(self.is_equal(&left_val, &right_val))
                 }
                 _ => unimplemented!(),
             }
@@ -258,7 +258,7 @@ pub mod interpreter {
                     LiteralValue::NumberLiteral(f) => LiteralValue::NumberLiteral(-f),
                     _ => panic!("runtime error: expected numeric literal for \"-\" operand"),
                 },
-                TokenType::BANG => self.is_true(&right_val),
+                TokenType::BANG => LiteralValue::BoolLiteral(!self.is_true(&right_val)),
                 _ => unimplemented!(),
             }
         }
@@ -277,12 +277,12 @@ pub mod interpreter {
             expr.accept(self)
         }
 
-        fn is_true(&mut self, literal_value: &LiteralValue) -> LiteralValue {
-            LiteralValue::BoolLiteral(match literal_value {
+        fn is_true(&mut self, literal_value: &LiteralValue) -> bool {
+            match literal_value {
                 LiteralValue::NumberLiteral(_) | LiteralValue::StringLiteral(_) => true,
                 LiteralValue::BoolLiteral(b) => *b,
                 LiteralValue::NilLiteral => false,
-            })
+            }
         }
 
         fn is_equal(&mut self, l: &LiteralValue, r: &LiteralValue) -> bool {
