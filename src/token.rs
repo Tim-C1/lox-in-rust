@@ -117,6 +117,18 @@ impl fmt::Display for LiteralValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             LiteralValue::StringLiteral(s) => s.clone(),
+            LiteralValue::NumberLiteral(f) => format!("{}", f),
+            LiteralValue::BoolLiteral(b) => format!("{:?}", b),
+            LiteralValue::NilLiteral => "nil".to_string(),
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl fmt::Debug for LiteralValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            LiteralValue::StringLiteral(s) => s.clone(),
             LiteralValue::NumberLiteral(f) => format!("{:?}", f),
             LiteralValue::BoolLiteral(b) => format!("{:?}", b),
             LiteralValue::NilLiteral => "nil".to_string(),
@@ -134,7 +146,7 @@ impl fmt::Display for Token {
             self.lexeme,
             self.literal
                 .as_ref()
-                .map_or("null".to_string(), |s| format!("{}", s))
+                .map_or("null".to_string(), |s| format!("{:?}", s))
         )
     }
 }

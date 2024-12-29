@@ -1,4 +1,5 @@
 use crate::expression::*;
+use crate::statement::*;
 use crate::token::*;
 use std::fmt;
 
@@ -10,6 +11,7 @@ pub struct Parser {
 pub enum ParserError {
     UnmatchedParen,
     ExpectExpr,
+    ExpectSemicolon,
 }
 
 impl fmt::Display for ParserError {
@@ -17,6 +19,7 @@ impl fmt::Display for ParserError {
         match self {
             Self::UnmatchedParen => write!(f, "UnmatchedParen detected"),
             Self::ExpectExpr => write!(f, "Expect expression"),
+            Self::ExpectSemicolon => write!(f, "Expected ';' after expression"),
         }
     }
 }
@@ -26,8 +29,36 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Box<Expr>, ParserError> {
+    pub fn parse_expr(&mut self) -> Result<Box<Expr>, ParserError> {
         self.expression()
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut stmts = Vec::new();
+        while !self.end() {
+            stmts.push(self.statement()?);
+        }
+        Ok(stmts)
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParserError> {
+        if self.match_then_advance(vec![TokenType::PRINT]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SEMICOLON)?;
+        Ok(Stmt::PrintStmt(expr))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SEMICOLON)?;
+        Ok(Stmt::ExprStmt(expr))
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ParserError> {
@@ -121,12 +152,15 @@ impl Parser {
                 Ok(_) => return Ok(Box::new(Expr::GroupingExpr(Grouping::new(expr)))),
                 Err(e) => {
                     eprintln!("{e}");
-                    Err(e)
+                    return Err(e);
                 }
             }
+        }
+        if self.match_then_advance(vec![TokenType::SEMICOLON]) {
+            let e = ParserError::ExpectExpr;
+            return Err(e);
         } else {
             let e = ParserError::UnmatchedParen;
-            eprintln!("{e}");
             Err(e)
         }
     }
@@ -153,7 +187,11 @@ impl Parser {
         if self.check(ttype) {
             Ok(self.advance())
         } else {
-            Err(ParserError::UnmatchedParen)
+            match ttype {
+                TokenType::RIGHT_PAREN => Err(ParserError::UnmatchedParen),
+                TokenType::SEMICOLON => Err(ParserError::ExpectSemicolon),
+                _ => unimplemented!(),
+            }
         }
     }
 

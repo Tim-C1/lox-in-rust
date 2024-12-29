@@ -1,18 +1,12 @@
-pub mod expression;
-pub mod parser;
-pub mod scanner;
-pub mod token;
-
-use parser::*;
-use scanner::{Scanner, ScannerStatus};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
 
-use self::expression::ast_printer;
-use self::expression::interpreter;
-use self::expression::Accept;
+use codecrafters_interpreter::expression::ast_printer::AstPrinter;
+use codecrafters_interpreter::interpreter::*;
+use codecrafters_interpreter::parser::*;
+use codecrafters_interpreter::scanner::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -26,9 +20,6 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
                 String::new()
@@ -43,8 +34,6 @@ fn main() {
             }
         }
         "parse" => {
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
                 String::new()
@@ -57,19 +46,16 @@ fn main() {
                 ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
             }
             let mut parser = Parser::new(scanner.tokens);
-            let expression_rst = parser.parse();
-            match expression_rst {
+            let expr = parser.parse_expr();
+            match expr {
                 Ok(expr) => {
-                    let mut printer = ast_printer::AstPrinter;
-                    let ast = expr.accept(&mut printer);
-                    println!("{}", ast);
+                    let mut printer = AstPrinter;
+                    printer.print(expr.as_ref());
                 }
                 Err(_) => exit(65),
             }
         }
         "evaluate" => {
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
                 String::new()
@@ -81,18 +67,12 @@ fn main() {
                 ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
             }
             let mut parser = Parser::new(scanner.tokens);
-            let expression_rst = parser.parse();
-            match expression_rst {
+            let expr = parser.parse_expr();
+            match expr {
                 Ok(expr) => {
-                    let mut evaluator = interpreter::Interpreter;
-                    let rst = expr.accept(&mut evaluator);
-                    match rst {
-                        Ok(rst) => match rst {
-                            token::LiteralValue::NumberLiteral(n) => println!("{n}"),
-                            token::LiteralValue::StringLiteral(s) => println!("{s}"),
-                            token::LiteralValue::BoolLiteral(b) => println!("{b}"),
-                            token::LiteralValue::NilLiteral => println!("nil"),
-                        },
+                    let mut evaluator = Interpreter;
+                    match evaluator.evaluate(&expr) {
+                        Ok(v) => println!("{v}"),
                         Err(e) => {
                             eprintln!("{e}");
                             exit(70);
@@ -100,6 +80,36 @@ fn main() {
                     }
                 }
                 Err(_) => exit(65),
+            }
+        }
+        "run" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                String::new()
+            });
+            let mut scanner = Scanner::new(file_contents.trim_end());
+            scanner.scan_tokens();
+            match &scanner.status {
+                ScannerStatus::ScanSuccess => {}
+                ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
+            }
+            let mut parser = Parser::new(scanner.tokens);
+            let stmts = parser.parse();
+            match stmts {
+                Ok(stmts) => {
+                    let mut interpreter = Interpreter;
+                    match interpreter.interprete(&stmts) {
+                        Ok(()) => exit(0),
+                        Err(e) => {
+                            eprintln!("{e}");
+                            exit(70);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                    exit(65);
+                }
             }
         }
         _ => {
