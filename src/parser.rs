@@ -6,6 +6,7 @@ use std::fmt;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    pub status: ParserStatus,
 }
 
 pub enum ParserError {
@@ -14,6 +15,10 @@ pub enum ParserError {
     ExpectSemicolon,
 }
 
+pub enum ParserStatus {
+    Success,
+    Panic,
+}
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -26,19 +31,53 @@ impl fmt::Display for ParserError {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            status: ParserStatus::Success,
+        }
     }
 
     pub fn parse_expr(&mut self) -> Result<Box<Expr>, ParserError> {
         self.expression()
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn parse(&mut self) -> Vec<Stmt> {
         let mut stmts = Vec::new();
         while !self.end() {
-            stmts.push(self.statement()?);
+            match self.declaration() {
+                Some(stmt) => stmts.push(stmt),
+                None => continue,
+            }
         }
-        Ok(stmts)
+        stmts
+    }
+
+    fn declaration(&mut self) -> Option<Stmt> {
+        match if self.match_then_advance(vec![TokenType::VAR]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        } {
+            Ok(stmt) => Some(stmt),
+            Err(e) => {
+                eprintln!("{e}");
+                self.status = ParserStatus::Panic;
+                self.synchronize();
+                None
+            }
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
+        let name = self.consume(TokenType::IDENTIFIER)?.clone();
+        let init = if self.match_then_advance(vec![TokenType::EQUAL]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::SEMICOLON)?;
+        Ok(Stmt::VarStmt(VarStmtInner(name, init)))
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError> {
@@ -52,13 +91,13 @@ impl Parser {
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
         self.consume(TokenType::SEMICOLON)?;
-        Ok(Stmt::PrintStmt(expr))
+        Ok(Stmt::PrintStmt(PrintStmtInner(expr)))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
         self.consume(TokenType::SEMICOLON)?;
-        Ok(Stmt::ExprStmt(expr))
+        Ok(Stmt::ExprStmt(ExprStmtInner(expr)))
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ParserError> {
@@ -140,18 +179,11 @@ impl Parser {
             let literal = self.previous().literal.clone().unwrap();
             return Ok(Box::new(Expr::LiteralExpr(Literal::new(literal))));
         }
-        if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
-            let literal = self.previous().lexeme.clone();
-            return Ok(Box::new(Expr::LiteralExpr(Literal::new(
-                LiteralValue::StringLiteral(literal),
-            ))));
-        }
         if self.match_then_advance(vec![TokenType::LEFT_PAREN]) {
             let expr = self.expression()?;
             match self.consume(TokenType::RIGHT_PAREN) {
                 Ok(_) => return Ok(Box::new(Expr::GroupingExpr(Grouping::new(expr)))),
                 Err(e) => {
-                    eprintln!("{e}");
                     return Err(e);
                 }
             }
@@ -159,9 +191,34 @@ impl Parser {
         if self.match_then_advance(vec![TokenType::SEMICOLON]) {
             let e = ParserError::ExpectExpr;
             return Err(e);
+        }
+        if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
+            return Ok(Box::new(Expr::VarExpr(Var::new(self.previous().clone()))));
         } else {
             let e = ParserError::UnmatchedParen;
             Err(e)
+        }
+    }
+
+    fn synchronize(&mut self) {
+        self.advance();
+        while !self.end() {
+            if self.previous().ttype == TokenType::SEMICOLON {
+                return;
+            }
+            match self.peek().ttype {
+                TokenType::CLASS
+                | TokenType::FUN
+                | TokenType::VAR
+                | TokenType::FOR
+                | TokenType::IF
+                | TokenType::WHILE
+                | TokenType::PRINT
+                | TokenType::RETURN => return,
+                _ => {
+                    self.advance();
+                }
+            }
         }
     }
 

@@ -40,7 +40,6 @@ fn main() {
             });
             let mut scanner = Scanner::new(file_contents.trim_end());
             scanner.scan_tokens();
-            // scanner.print_tokens();
             match &scanner.status {
                 ScannerStatus::ScanSuccess => {}
                 ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
@@ -70,7 +69,7 @@ fn main() {
             let expr = parser.parse_expr();
             match expr {
                 Ok(expr) => {
-                    let mut evaluator = Interpreter;
+                    let mut evaluator = Interpreter::new();
                     match evaluator.evaluate(&expr) {
                         Ok(v) => println!("{v}"),
                         Err(e) => {
@@ -91,13 +90,13 @@ fn main() {
             scanner.scan_tokens();
             match &scanner.status {
                 ScannerStatus::ScanSuccess => {}
-                ScannerStatus::UnknowCharErr | ScannerStatus::NonTerminatedStringErr => exit(65),
+                _ => exit(65),
             }
             let mut parser = Parser::new(scanner.tokens);
             let stmts = parser.parse();
-            match stmts {
-                Ok(stmts) => {
-                    let mut interpreter = Interpreter;
+            match parser.status {
+                ParserStatus::Success => {
+                    let mut interpreter = Interpreter::new();
                     match interpreter.interprete(&stmts) {
                         Ok(()) => exit(0),
                         Err(e) => {
@@ -106,8 +105,7 @@ fn main() {
                         }
                     }
                 }
-                Err(e) => {
-                    eprintln!("{e}");
+                ParserStatus::Panic => {
                     exit(65);
                 }
             }

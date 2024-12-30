@@ -6,6 +6,7 @@ pub trait ExprVisitor<R> {
     fn visit_unary(&mut self, unary: &Unary) -> R;
     fn visit_literal(&mut self, literal: &Literal) -> R;
     fn visit_grouping(&mut self, grouping: &Grouping) -> R;
+    fn visit_var(&mut self, var: &Var) -> R;
 }
 
 pub trait ExprAccept<R> {
@@ -17,6 +18,7 @@ pub enum Expr {
     UnaryExpr(Unary),
     LiteralExpr(Literal),
     GroupingExpr(Grouping),
+    VarExpr(Var),
 }
 
 pub struct Binary {
@@ -36,6 +38,10 @@ pub struct Literal {
 
 pub struct Grouping {
     pub expression: Box<Expr>,
+}
+
+pub struct Var {
+    pub name: Token,
 }
 
 impl Binary {
@@ -66,6 +72,12 @@ impl Grouping {
     }
 }
 
+impl Var {
+    pub fn new(name: Token) -> Self {
+        Self { name }
+    }
+}
+
 impl<R> ExprAccept<R> for Expr {
     fn accept<V: ExprVisitor<R>>(&self, visitor: &mut V) -> R {
         match self {
@@ -73,6 +85,7 @@ impl<R> ExprAccept<R> for Expr {
             Expr::UnaryExpr(u) => visitor.visit_unary(u),
             Expr::LiteralExpr(l) => visitor.visit_literal(l),
             Expr::GroupingExpr(g) => visitor.visit_grouping(g),
+            Expr::VarExpr(v) => visitor.visit_var(v),
         }
     }
 }
@@ -116,6 +129,10 @@ pub mod ast_printer {
         }
         fn visit_grouping(&mut self, grouping: &Grouping) -> String {
             self.parenthesize("group", vec![grouping.expression.as_ref()])
+        }
+        fn visit_var(&mut self, var: &Var) -> String {
+            // String::from(format!("{:?}", var.name.lexeme))
+            todo!()
         }
     }
     impl AstPrinter {

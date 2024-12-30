@@ -1,3 +1,4 @@
+use crate::environment::*;
 use crate::expression::ExprAccept;
 use crate::expression::*;
 use crate::statement::StmtAccept;
@@ -5,15 +6,76 @@ use crate::statement::*;
 use crate::token::*;
 use std::fmt;
 
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: Environment,
+}
+
 pub enum RuntimeError {
     InvalidOperand(TokenType, String, usize),
+    UndefinedVar(Token),
 }
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RuntimeError::InvalidOperand(_, desc, line) => {
+            Self::InvalidOperand(_, desc, line) => {
                 write!(f, "{}\n[line {}]", desc, line)
+            }
+            Self::UndefinedVar(v) => {
+                write!(f, "Undefined variable '{}'.", v.lexeme)
+            }
+        }
+    }
+}
+impl Interpreter {
+    pub fn new() -> Self {
+        Interpreter {
+            environment: Environment::new(),
+        }
+    }
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeError> {
+        expr.accept(self)
+    }
+    pub fn interprete(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
+        for stmt in stmts {
+            self.execute(stmt)?
+        }
+        Ok(())
+    }
+
+    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+        stmt.accept(self)
+    }
+
+    fn is_true(&mut self, literal_value: &LiteralValue) -> bool {
+        match literal_value {
+            LiteralValue::NumberLiteral(_) | LiteralValue::StringLiteral(_) => true,
+            LiteralValue::BoolLiteral(b) => *b,
+            LiteralValue::NilLiteral => false,
+        }
+    }
+
+    fn is_equal(&mut self, l: &LiteralValue, r: &LiteralValue) -> bool {
+        if matches!(l, LiteralValue::NilLiteral) {
+            if matches!(r, LiteralValue::NilLiteral) {
+                true
+            } else {
+                false
+            }
+        } else {
+            match l {
+                LiteralValue::NumberLiteral(l) => match r {
+                    LiteralValue::NumberLiteral(r) => l == r,
+                    _ => false,
+                },
+                LiteralValue::BoolLiteral(l) => match r {
+                    LiteralValue::BoolLiteral(r) => l == r,
+                    _ => false,
+                },
+                LiteralValue::StringLiteral(l) => match r {
+                    LiteralValue::StringLiteral(r) => l == r,
+                    _ => false,
+                },
+                _ => unreachable!(),
             }
         }
     }
@@ -254,67 +316,30 @@ impl ExprVisitor<Result<LiteralValue, RuntimeError>> for Interpreter {
     fn visit_grouping(&mut self, grouping: &Grouping) -> Result<LiteralValue, RuntimeError> {
         self.evaluate(&grouping.expression)
     }
+
+    fn visit_var(&mut self, var: &Var) -> Result<LiteralValue, RuntimeError> {
+        Ok(self.environment.get(&var.name)?)
+    }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
-    fn visit_expr(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
-        self.evaluate(expr)?;
+    fn visit_expr(&mut self, expr: &ExprStmtInner) -> Result<(), RuntimeError> {
+        self.evaluate(expr.0.as_ref())?;
         Ok(())
     }
 
-    fn visit_print(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
-        let rst = self.evaluate(expr)?;
+    fn visit_print(&mut self, print: &PrintStmtInner) -> Result<(), RuntimeError> {
+        let rst = self.evaluate(print.0.as_ref())?;
         println!("{rst}");
         Ok(())
     }
-}
 
-impl Interpreter {
-    pub fn evaluate(&mut self, expr: &Expr) -> Result<LiteralValue, RuntimeError> {
-        expr.accept(self)
-    }
-    pub fn interprete(&mut self, stmts: &Vec<Stmt>) -> Result<(), RuntimeError> {
-        for stmt in stmts {
-            self.execute(stmt)?
-        }
+    fn visit_var(&mut self, var: &VarStmtInner) -> Result<(), RuntimeError> {
+        let val = match &var.1 {
+            Some(expr) => Some(self.evaluate(expr.as_ref())?),
+            None => None,
+        };
+        self.environment.define(&var.0.lexeme, val);
         Ok(())
-    }
-
-    fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
-        stmt.accept(self)
-    }
-
-    fn is_true(&mut self, literal_value: &LiteralValue) -> bool {
-        match literal_value {
-            LiteralValue::NumberLiteral(_) | LiteralValue::StringLiteral(_) => true,
-            LiteralValue::BoolLiteral(b) => *b,
-            LiteralValue::NilLiteral => false,
-        }
-    }
-
-    fn is_equal(&mut self, l: &LiteralValue, r: &LiteralValue) -> bool {
-        if matches!(l, LiteralValue::NilLiteral) {
-            if matches!(r, LiteralValue::NilLiteral) {
-                true
-            } else {
-                false
-            }
-        } else {
-            match l {
-                LiteralValue::NumberLiteral(l) => match r {
-                    LiteralValue::NumberLiteral(r) => l == r,
-                    _ => false,
-                },
-                LiteralValue::BoolLiteral(l) => match r {
-                    LiteralValue::BoolLiteral(r) => l == r,
-                    _ => false,
-                },
-                LiteralValue::StringLiteral(l) => match r {
-                    LiteralValue::StringLiteral(r) => l == r,
-                    _ => false,
-                },
-                _ => unreachable!(),
-            }
-        }
     }
 }
