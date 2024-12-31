@@ -13,6 +13,7 @@ pub enum ParserError {
     UnmatchedParen,
     ExpectExpr,
     ExpectSemicolon,
+    InvalidAssignmentTarget,
 }
 
 pub enum ParserStatus {
@@ -25,6 +26,7 @@ impl fmt::Display for ParserError {
             Self::UnmatchedParen => write!(f, "UnmatchedParen detected"),
             Self::ExpectExpr => write!(f, "Expect expression"),
             Self::ExpectSemicolon => write!(f, "Expected ';' after expression"),
+            Self::InvalidAssignmentTarget => write!(f, "Invalid assignment target"),
         }
     }
 }
@@ -101,7 +103,27 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ParserError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<Expr>, ParserError> {
+        let expr = self.equality()?;
+        if self.match_then_advance(vec![TokenType::EQUAL]) {
+            let value = self.assignment()?;
+            match expr.as_ref() {
+                Expr::VarExpr(var) => Ok(Box::new(Expr::AssignmentExpr(Assignment::new(
+                    var.name.clone(),
+                    value,
+                )))),
+                _ => {
+                    let e = ParserError::InvalidAssignmentTarget;
+                    println!("{e}");
+                    Ok(expr)
+                }
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> Result<Box<Expr>, ParserError> {

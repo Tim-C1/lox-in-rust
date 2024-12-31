@@ -320,6 +320,12 @@ impl ExprVisitor<Result<LiteralValue, RuntimeError>> for Interpreter {
     fn visit_var(&mut self, var: &Var) -> Result<LiteralValue, RuntimeError> {
         Ok(self.environment.get(&var.name)?)
     }
+
+    fn visit_assignment(&mut self, assignment: &Assignment) -> Result<LiteralValue, RuntimeError> {
+        let value = self.evaluate(assignment.value.as_ref())?;
+        self.environment.assign(&assignment.name, value.clone())?;
+        Ok(value)
+    }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
