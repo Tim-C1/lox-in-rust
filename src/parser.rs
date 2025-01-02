@@ -14,6 +14,7 @@ pub enum ParserError {
     ExpectExpr,
     ExpectSemicolon,
     InvalidAssignmentTarget,
+    ExpectRightBrace,
 }
 
 pub enum ParserStatus {
@@ -27,6 +28,7 @@ impl fmt::Display for ParserError {
             Self::ExpectExpr => write!(f, "Expect expression"),
             Self::ExpectSemicolon => write!(f, "Expected ';' after expression"),
             Self::InvalidAssignmentTarget => write!(f, "Invalid assignment target"),
+            Self::ExpectRightBrace => write!(f, "Unmatched brace detected"),
         }
     }
 }
@@ -85,6 +87,8 @@ impl Parser {
     fn statement(&mut self) -> Result<Stmt, ParserError> {
         if self.match_then_advance(vec![TokenType::PRINT]) {
             self.print_statement()
+        } else if self.match_then_advance(vec![TokenType::LEFT_BRACE]) {
+            self.block_statement()
         } else {
             self.expression_statement()
         }
@@ -94,6 +98,18 @@ impl Parser {
         let expr = self.expression()?;
         self.consume(TokenType::SEMICOLON)?;
         Ok(Stmt::PrintStmt(PrintStmtInner(expr)))
+    }
+
+    fn block_statement(&mut self) -> Result<Stmt, ParserError> {
+        let mut stmts = Vec::new();
+        while !self.check(TokenType::RIGHT_BRACE) && !self.end() {
+            let stmt = self.declaration();
+            if let Some(stmt) = stmt {
+                stmts.push(Box::new(stmt));
+            }
+        }
+        self.consume(TokenType::RIGHT_BRACE)?;
+        Ok(Stmt::BlockStmt(BlockStmtInner(stmts)))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
@@ -269,6 +285,7 @@ impl Parser {
             match ttype {
                 TokenType::RIGHT_PAREN => Err(ParserError::UnmatchedParen),
                 TokenType::SEMICOLON => Err(ParserError::ExpectSemicolon),
+                TokenType::RIGHT_BRACE => Err(ParserError::ExpectRightBrace),
                 _ => unimplemented!(),
             }
         }

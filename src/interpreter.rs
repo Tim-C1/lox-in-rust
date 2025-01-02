@@ -4,10 +4,12 @@ use crate::expression::*;
 use crate::statement::StmtAccept;
 use crate::statement::*;
 use crate::token::*;
+use std::cell::RefCell;
 use std::fmt;
+use std::rc::Rc;
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: Rc<RefCell<Environment>>,
 }
 
 pub enum RuntimeError {
@@ -318,12 +320,12 @@ impl ExprVisitor<Result<LiteralValue, RuntimeError>> for Interpreter {
     }
 
     fn visit_var(&mut self, var: &Var) -> Result<LiteralValue, RuntimeError> {
-        Ok(self.environment.get(&var.name)?)
+        Ok(self.environment.borrow().get(&var.name)?)
     }
 
     fn visit_assignment(&mut self, assignment: &Assignment) -> Result<LiteralValue, RuntimeError> {
         let value = self.evaluate(assignment.value.as_ref())?;
-        self.environment.assign(&assignment.name, value.clone())?;
+        RefCell::borrow_mut(&self.environment).assign(&assignment.name, value.clone())?;
         Ok(value)
     }
 }
@@ -345,7 +347,18 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             Some(expr) => Some(self.evaluate(expr.as_ref())?),
             None => None,
         };
-        self.environment.define(&var.0.lexeme, val);
+        RefCell::borrow_mut(&self.environment).define(&var.0.lexeme, val);
+        Ok(())
+    }
+
+    fn visit_block(&mut self, stmts: &BlockStmtInner) -> Result<(), RuntimeError> {
+        let block_env = Environment::new_with_enclosing(&self.environment);
+        self.environment = Rc::new(RefCell::new(block_env));
+        let prev_env = self.environment.clone();
+        for stmt in &stmts.0 {
+            self.execute(stmt.as_ref())?;
+        }
+        self.environment = prev_env;
         Ok(())
     }
 }
