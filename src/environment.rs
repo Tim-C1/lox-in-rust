@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Environment {
-    enclosing: Option<Rc<RefCell<Environment>>>,
-    map: HashMap<String, LiteralValue>,
+    pub enclosing: Option<Rc<RefCell<Environment>>>,
+    pub map: HashMap<String, LiteralValue>,
 }
 
 impl Environment {

@@ -353,8 +353,8 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
     fn visit_block(&mut self, stmts: &BlockStmtInner) -> Result<(), RuntimeError> {
         let block_env = Environment::new_with_enclosing(&self.environment);
-        self.environment = Rc::new(RefCell::new(block_env));
         let prev_env = self.environment.clone();
+        self.environment = Rc::new(RefCell::new(block_env));
         for stmt in &stmts.0 {
             self.execute(stmt.as_ref())?;
         }
