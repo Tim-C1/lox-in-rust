@@ -8,6 +8,7 @@ pub trait ExprVisitor<R> {
     fn visit_grouping(&mut self, grouping: &Grouping) -> R;
     fn visit_var(&mut self, var: &Var) -> R;
     fn visit_assignment(&mut self, assignment: &Assignment) -> R;
+    fn visit_logical(&mut self, logical: &Logical) -> R;
 }
 
 pub trait ExprAccept<R> {
@@ -21,6 +22,7 @@ pub enum Expr {
     GroupingExpr(Grouping),
     VarExpr(Var),
     AssignmentExpr(Assignment),
+    LogicalExpr(Logical),
 }
 
 pub struct Binary {
@@ -49,6 +51,12 @@ pub struct Var {
 pub struct Assignment {
     pub name: Token,
     pub value: Box<Expr>,
+}
+
+pub struct Logical {
+    pub left: Box<Expr>,
+    pub operator: Token,
+    pub right: Box<Expr>,
 }
 
 impl Binary {
@@ -91,6 +99,16 @@ impl Assignment {
     }
 }
 
+impl Logical {
+    pub fn new(left: Box<Expr>, operator: Token, right: Box<Expr>) -> Self {
+        Self {
+            left,
+            operator,
+            right,
+        }
+    }
+}
+
 impl<R> ExprAccept<R> for Expr {
     fn accept<V: ExprVisitor<R>>(&self, visitor: &mut V) -> R {
         match self {
@@ -100,6 +118,7 @@ impl<R> ExprAccept<R> for Expr {
             Expr::GroupingExpr(g) => visitor.visit_grouping(g),
             Expr::VarExpr(v) => visitor.visit_var(v),
             Expr::AssignmentExpr(a) => visitor.visit_assignment(a),
+            Expr::LogicalExpr(l) => visitor.visit_logical(l),
         }
     }
 }
@@ -150,6 +169,10 @@ pub mod ast_printer {
         }
 
         fn visit_assignment(&mut self, _assignment: &Assignment) -> String {
+            todo!()
+        }
+
+        fn visit_logical(&mut self, _logical: &Logical) -> String {
             todo!()
         }
     }

@@ -9,27 +9,43 @@ pub struct Parser {
     pub status: ParserStatus,
 }
 
-pub enum ParserError {
-    UnmatchedParen,
-    ExpectExpr,
-    ExpectSemicolon,
-    InvalidAssignmentTarget,
-    ExpectRightBrace,
+pub struct ParserError {
+    token: Token,
+    msg: String,
 }
 
 pub enum ParserStatus {
     Success,
     Panic,
 }
+
+impl ParserError {
+    pub fn new(token: Token, msg: &str) -> Self {
+        Self {
+            token,
+            msg: String::from(msg),
+        }
+    }
+}
+fn report(line: usize, loc: String, msg: &str) -> String {
+    format!("[line {line}] Error {loc}: {msg}")
+}
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnmatchedParen => write!(f, "UnmatchedParen detected"),
-            Self::ExpectExpr => write!(f, "Expect expression"),
-            Self::ExpectSemicolon => write!(f, "Expected ';' after expression"),
-            Self::InvalidAssignmentTarget => write!(f, "Invalid assignment target"),
-            Self::ExpectRightBrace => write!(f, "Unmatched brace detected"),
-        }
+        write!(
+            f,
+            "{}",
+            report(
+                self.token.line,
+                if self.token.ttype == TokenType::EOF {
+                    String::from("at end")
+                } else {
+                    let lexeme = self.token.lexeme.as_str();
+                    format!("at '{lexeme}';")
+                },
+                &self.msg
+            )
+        )
     }
 }
 
@@ -74,18 +90,22 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParserError> {
-        let name = self.consume(TokenType::IDENTIFIER)?.clone();
+        let name = self
+            .consume(TokenType::IDENTIFIER, "Expect variable name")?
+            .clone();
         let init = if self.match_then_advance(vec![TokenType::EQUAL]) {
             Some(self.expression()?)
         } else {
             None
         };
-        self.consume(TokenType::SEMICOLON)?;
+        self.consume(TokenType::SEMICOLON, "Expect ; after variable declaration")?;
         Ok(Stmt::VarStmt(VarStmtInner(name, init)))
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError> {
-        if self.match_then_advance(vec![TokenType::PRINT]) {
+        if self.match_then_advance(vec![TokenType::IF]) {
+            self.if_statement()
+        } else if self.match_then_advance(vec![TokenType::PRINT]) {
             self.print_statement()
         } else if self.match_then_advance(vec![TokenType::LEFT_BRACE]) {
             self.block_statement()
@@ -94,9 +114,27 @@ impl Parser {
         }
     }
 
+    fn if_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LEFT_PAREN, "expect '(' after 'if'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RIGHT_PAREN, "expect ')' after if condition.")?;
+
+        let then_branch = self.statement()?;
+        let else_branch = if self.match_then_advance(vec![TokenType::ELSE]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+        Ok(Stmt::IfStmt(IfStmtInner::new(
+            condition,
+            Box::new(then_branch),
+            else_branch,
+        )))
+    }
+
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
-        self.consume(TokenType::SEMICOLON)?;
+        self.consume(TokenType::SEMICOLON, "expect ';' after value.")?;
         Ok(Stmt::PrintStmt(PrintStmtInner(expr)))
     }
 
@@ -108,13 +146,13 @@ impl Parser {
                 stmts.push(Box::new(stmt));
             }
         }
-        self.consume(TokenType::RIGHT_BRACE)?;
+        self.consume(TokenType::RIGHT_BRACE, "expect '}' after block.")?;
         Ok(Stmt::BlockStmt(BlockStmtInner(stmts)))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression()?;
-        self.consume(TokenType::SEMICOLON)?;
+        self.consume(TokenType::SEMICOLON, "expect ';' after expression.")?;
         Ok(Stmt::ExprStmt(ExprStmtInner(expr)))
     }
 
@@ -123,7 +161,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Box<Expr>, ParserError> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
         if self.match_then_advance(vec![TokenType::EQUAL]) {
             let value = self.assignment()?;
             match expr.as_ref() {
@@ -132,7 +170,7 @@ impl Parser {
                     value,
                 )))),
                 _ => {
-                    let e = ParserError::InvalidAssignmentTarget;
+                    let e = ParserError::new(self.previous().clone(), "Invalid assignment target");
                     println!("{e}");
                     Ok(expr)
                 }
@@ -140,6 +178,26 @@ impl Parser {
         } else {
             Ok(expr)
         }
+    }
+
+    pub fn or(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.and()?;
+        while self.match_then_advance(vec![TokenType::OR]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            left = Box::new(Expr::LogicalExpr(Logical::new(left, operator, right)));
+        }
+        Ok(left)
+    }
+
+    pub fn and(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.equality()?;
+        while self.match_then_advance(vec![TokenType::AND]) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+            left = Box::new(Expr::LogicalExpr(Logical::new(left, operator, right)));
+        }
+        Ok(left)
     }
 
     fn equality(&mut self) -> Result<Box<Expr>, ParserError> {
@@ -219,23 +277,17 @@ impl Parser {
         }
         if self.match_then_advance(vec![TokenType::LEFT_PAREN]) {
             let expr = self.expression()?;
-            match self.consume(TokenType::RIGHT_PAREN) {
+            match self.consume(TokenType::RIGHT_PAREN, "expect ')' after expression.") {
                 Ok(_) => return Ok(Box::new(Expr::GroupingExpr(Grouping::new(expr)))),
                 Err(e) => {
                     return Err(e);
                 }
             }
         }
-        if self.match_then_advance(vec![TokenType::SEMICOLON]) {
-            let e = ParserError::ExpectExpr;
-            return Err(e);
-        }
         if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
             return Ok(Box::new(Expr::VarExpr(Var::new(self.previous().clone()))));
-        } else {
-            let e = ParserError::UnmatchedParen;
-            Err(e)
         }
+        Err(ParserError::new(self.peek().clone(), "exptect expression."))
     }
 
     fn synchronize(&mut self) {
@@ -278,16 +330,11 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, ttype: TokenType) -> Result<&Token, ParserError> {
+    fn consume(&mut self, ttype: TokenType, msg: &str) -> Result<&Token, ParserError> {
         if self.check(ttype) {
             Ok(self.advance())
         } else {
-            match ttype {
-                TokenType::RIGHT_PAREN => Err(ParserError::UnmatchedParen),
-                TokenType::SEMICOLON => Err(ParserError::ExpectSemicolon),
-                TokenType::RIGHT_BRACE => Err(ParserError::ExpectRightBrace),
-                _ => unimplemented!(),
-            }
+            Err(ParserError::new(self.peek().clone(), msg))
         }
     }
 

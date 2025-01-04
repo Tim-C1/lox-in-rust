@@ -48,7 +48,7 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    fn is_true(&mut self, literal_value: &LiteralValue) -> bool {
+    fn is_true(&self, literal_value: &LiteralValue) -> bool {
         match literal_value {
             LiteralValue::NumberLiteral(_) | LiteralValue::StringLiteral(_) => true,
             LiteralValue::BoolLiteral(b) => *b,
@@ -328,6 +328,20 @@ impl ExprVisitor<Result<LiteralValue, RuntimeError>> for Interpreter {
         RefCell::borrow_mut(&self.environment).assign(&assignment.name, value.clone())?;
         Ok(value)
     }
+
+    fn visit_logical(&mut self, logical: &Logical) -> Result<LiteralValue, RuntimeError> {
+        let left = self.evaluate(&logical.left)?;
+        if logical.operator.ttype == TokenType::OR {
+            if self.is_true(&left) {
+                return Ok(left);
+            }
+        } else {
+            if !self.is_true(&left) {
+                return Ok(left);
+            }
+        }
+        self.evaluate(&logical.right)
+    }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
@@ -360,5 +374,17 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         }
         self.environment = prev_env;
         Ok(())
+    }
+
+    fn visit_if(&mut self, branch: &IfStmtInner) -> Result<(), RuntimeError> {
+        let condition = self.evaluate(&branch.condition)?;
+        if self.is_true(&condition) {
+            self.execute(&branch.then_branch)
+        } else {
+            match branch.else_branch {
+                Some(ref else_branch) => self.execute(else_branch),
+                None => Ok(()),
+            }
+        }
     }
 }
