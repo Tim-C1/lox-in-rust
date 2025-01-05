@@ -387,4 +387,13 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             }
         }
     }
+
+    fn visit_while(&mut self, while_stmt: &WhileStmtInner) -> Result<(), RuntimeError> {
+        let mut condition = self.evaluate(while_stmt.condition.as_ref())?;
+        while self.is_true(&condition) {
+            self.execute(while_stmt.body.as_ref())?;
+            condition = self.evaluate(while_stmt.condition.as_ref())?;
+        }
+        Ok(())
+    }
 }

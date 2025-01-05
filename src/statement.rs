@@ -7,6 +7,7 @@ pub enum Stmt {
     VarStmt(VarStmtInner),
     BlockStmt(BlockStmtInner),
     IfStmt(IfStmtInner),
+    WhileStmt(WhileStmtInner),
 }
 
 pub struct ExprStmtInner(pub Box<Expr>);
@@ -17,6 +18,10 @@ pub struct IfStmtInner {
     pub condition: Box<Expr>,
     pub then_branch: Box<Stmt>,
     pub else_branch: Option<Box<Stmt>>,
+}
+pub struct WhileStmtInner {
+    pub condition: Box<Expr>,
+    pub body: Box<Stmt>,
 }
 
 impl IfStmtInner {
@@ -33,12 +38,19 @@ impl IfStmtInner {
     }
 }
 
+impl WhileStmtInner {
+    pub fn new(condition: Box<Expr>, body: Box<Stmt>) -> Self {
+        Self { condition, body }
+    }
+}
+
 pub trait StmtVisitor<R> {
     fn visit_expr(&mut self, expr: &ExprStmtInner) -> R;
     fn visit_print(&mut self, expr: &PrintStmtInner) -> R;
     fn visit_var(&mut self, expr: &VarStmtInner) -> R;
     fn visit_block(&mut self, stmts: &BlockStmtInner) -> R;
     fn visit_if(&mut self, branch: &IfStmtInner) -> R;
+    fn visit_while(&mut self, while_stmt: &WhileStmtInner) -> R;
 }
 
 pub trait StmtAccept<R> {
@@ -53,6 +65,7 @@ impl<R> StmtAccept<R> for Stmt {
             Stmt::VarStmt(var) => visitor.visit_var(var),
             Stmt::BlockStmt(block) => visitor.visit_block(block),
             Stmt::IfStmt(branch) => visitor.visit_if(branch),
+            Stmt::WhileStmt(while_stmt) => visitor.visit_while(while_stmt),
         }
     }
 }

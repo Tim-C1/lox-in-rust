@@ -107,6 +107,8 @@ impl Parser {
             self.if_statement()
         } else if self.match_then_advance(vec![TokenType::PRINT]) {
             self.print_statement()
+        } else if self.match_then_advance(vec![TokenType::WHILE]) {
+            self.while_statement()
         } else if self.match_then_advance(vec![TokenType::LEFT_BRACE]) {
             self.block_statement()
         } else {
@@ -136,6 +138,17 @@ impl Parser {
         let expr = self.expression()?;
         self.consume(TokenType::SEMICOLON, "expect ';' after value.")?;
         Ok(Stmt::PrintStmt(PrintStmtInner(expr)))
+    }
+
+    fn while_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LEFT_PAREN, "expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RIGHT_PAREN, "expect ')' after condition.")?;
+        let body = self.statement()?;
+        Ok(Stmt::WhileStmt(WhileStmtInner::new(
+            condition,
+            Box::new(body),
+        )))
     }
 
     fn block_statement(&mut self) -> Result<Stmt, ParserError> {
