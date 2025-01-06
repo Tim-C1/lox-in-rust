@@ -23,7 +23,6 @@ pub struct WhileStmtInner {
     pub condition: Box<Expr>,
     pub body: Box<Stmt>,
 }
-
 impl IfStmtInner {
     pub fn new(
         condition: Box<Expr>,

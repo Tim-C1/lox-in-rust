@@ -103,7 +103,9 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError> {
-        if self.match_then_advance(vec![TokenType::IF]) {
+        if self.match_then_advance(vec![TokenType::FOR]) {
+            self.for_statement()
+        } else if self.match_then_advance(vec![TokenType::IF]) {
             self.if_statement()
         } else if self.match_then_advance(vec![TokenType::PRINT]) {
             self.print_statement()
@@ -114,6 +116,48 @@ impl Parser {
         } else {
             self.expression_statement()
         }
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(TokenType::LEFT_PAREN, "expect '(' after 'for'.")?;
+        let initializer = if self.match_then_advance(vec![TokenType::SEMICOLON]) {
+            None
+        } else if self.match_then_advance(vec![TokenType::VAR]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+        let condition = if !self.check(TokenType::SEMICOLON) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::SEMICOLON, "expect ';' after loop condition.")?;
+        let increment = if !self.check(TokenType::RIGHT_PAREN) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::RIGHT_PAREN, "expect ')' after for clauses.")?;
+        let mut body = self.statement()?;
+        body = match increment {
+            Some(increment) => Stmt::BlockStmt(BlockStmtInner(vec![
+                Box::new(body),
+                Box::new(Stmt::ExprStmt(ExprStmtInner(increment))),
+            ])),
+            None => body,
+        };
+        body = match condition {
+            Some(condition) => Stmt::WhileStmt(WhileStmtInner::new(condition, Box::new(body))),
+            None => body,
+        };
+        body = match initializer {
+            Some(initializer) => {
+                Stmt::BlockStmt(BlockStmtInner(vec![Box::new(initializer), Box::new(body)]))
+            }
+            None => body,
+        };
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, ParserError> {
@@ -300,7 +344,7 @@ impl Parser {
         if self.match_then_advance(vec![TokenType::IDENTIFIER]) {
             return Ok(Box::new(Expr::VarExpr(Var::new(self.previous().clone()))));
         }
-        Err(ParserError::new(self.peek().clone(), "exptect expression."))
+        Err(ParserError::new(self.peek().clone(), "expect expression."))
     }
 
     fn synchronize(&mut self) {
