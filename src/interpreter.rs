@@ -463,7 +463,7 @@ impl StmtVisitor<Result<(), RuntimeException>> for Interpreter {
     }
 
     fn visit_function(&mut self, func_stmt: &FunctionStmtInner) -> Result<(), RuntimeException> {
-        let func = FunctionInner::new(func_stmt);
+        let func = FunctionInner::new(func_stmt, self.environment.clone());
         Ok(self.environment.borrow_mut().define(
             &func_stmt.name.lexeme,
             Some(CallableRet::Callable(Callable::Function(func))),

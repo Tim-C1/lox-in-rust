@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::fmt::Display;
+use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::environment::*;
@@ -23,12 +25,14 @@ pub struct Clock;
 #[derive(Clone)]
 pub struct FunctionInner {
     pub declaration: FunctionStmtInner,
+    pub closure: Rc<RefCell<Environment>>,
 }
 
 impl FunctionInner {
-    pub fn new(declaration: &FunctionStmtInner) -> Self {
+    pub fn new(declaration: &FunctionStmtInner, closure: Rc<RefCell<Environment>>) -> Self {
         Self {
             declaration: declaration.clone(),
+            closure,
         }
     }
 }
@@ -57,7 +61,7 @@ impl Callable {
                 )))
             }
             Callable::Function(func) => {
-                let mut func_env = Environment::new_with_enclosing(&interpreter.environment);
+                let mut func_env = Environment::new_with_enclosing(&func.closure);
                 for i in 0..func.declaration.params.len() {
                     func_env.define(
                         &func.declaration.params[i].lexeme,
