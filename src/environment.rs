@@ -1,4 +1,5 @@
-use crate::{interpreter::RuntimeError, token::*};
+use crate::callable::CallableRet;
+use crate::{interpreter::RuntimeException, token::*};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -6,7 +7,7 @@ use std::rc::Rc;
 
 pub struct Environment {
     pub enclosing: Option<Rc<RefCell<Environment>>>,
-    pub map: HashMap<String, LiteralValue>,
+    pub map: HashMap<String, CallableRet>,
 }
 
 impl Environment {
@@ -22,31 +23,31 @@ impl Environment {
             map: HashMap::new(),
         }
     }
-    pub fn define(&mut self, name: &str, value: Option<LiteralValue>) {
+    pub fn define(&mut self, name: &str, value: Option<CallableRet>) {
         self.map.insert(
             String::from(name),
-            value.unwrap_or(LiteralValue::NilLiteral),
+            value.unwrap_or(CallableRet::Value(LiteralValue::NilLiteral)),
         );
     }
     pub fn assign(
         &mut self,
         name: &Token,
-        value: LiteralValue,
-    ) -> Result<LiteralValue, RuntimeError> {
+        value: CallableRet,
+    ) -> Result<CallableRet, RuntimeException> {
         match self.map.entry(name.lexeme.clone()) {
             Entry::Occupied(mut occupied) => Ok(occupied.insert(value)),
             Entry::Vacant(_) => match &mut self.enclosing {
                 Some(enclosing) => enclosing.borrow_mut().assign(name, value),
-                None => Err(RuntimeError::UndefinedVar(name.clone())),
+                None => Err(RuntimeException::UndefinedVar(name.clone())),
             },
         }
     }
-    pub fn get(&self, name: &Token) -> Result<LiteralValue, RuntimeError> {
+    pub fn get(&self, name: &Token) -> Result<CallableRet, RuntimeException> {
         match self.map.get(&name.lexeme) {
             Some(val) => Ok(val.clone()),
             None => match &self.enclosing {
                 Some(enclosing) => enclosing.borrow().get(name),
-                None => Err(RuntimeError::UndefinedVar(name.clone())),
+                None => Err(RuntimeException::UndefinedVar(name.clone())),
             },
         }
     }

@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
 
+use codecrafters_interpreter::callable::*;
 use codecrafters_interpreter::expression::ast_printer::AstPrinter;
 use codecrafters_interpreter::interpreter::*;
 use codecrafters_interpreter::parser::*;
@@ -71,7 +72,10 @@ fn main() {
                 Ok(expr) => {
                     let mut evaluator = Interpreter::new();
                     match evaluator.evaluate(&expr) {
-                        Ok(v) => println!("{v}"),
+                        Ok(ret) => match ret {
+                            CallableRet::Value(val) => println!("{val}"),
+                            CallableRet::Callable(_) => unimplemented!(),
+                        },
                         Err(e) => {
                             eprintln!("{e}");
                             exit(70);

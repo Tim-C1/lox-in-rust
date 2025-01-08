@@ -9,12 +9,14 @@ pub trait ExprVisitor<R> {
     fn visit_var(&mut self, var: &Var) -> R;
     fn visit_assignment(&mut self, assignment: &Assignment) -> R;
     fn visit_logical(&mut self, logical: &Logical) -> R;
+    fn visit_call(&mut self, call: &Call) -> R;
 }
 
 pub trait ExprAccept<R> {
     fn accept<V: ExprVisitor<R>>(&self, visitor: &mut V) -> R;
 }
 
+#[derive(Clone)]
 pub enum Expr {
     BinaryExpr(Binary),
     UnaryExpr(Unary),
@@ -23,40 +25,55 @@ pub enum Expr {
     VarExpr(Var),
     AssignmentExpr(Assignment),
     LogicalExpr(Logical),
+    CallExpr(Call),
 }
 
+#[derive(Clone)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Token,
     pub right: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Unary {
     pub operator: Token,
     pub right: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Literal {
     pub value: LiteralValue,
 }
 
+#[derive(Clone)]
 pub struct Grouping {
     pub expression: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Var {
     pub name: Token,
 }
 
+#[derive(Clone)]
 pub struct Assignment {
     pub name: Token,
     pub value: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Logical {
     pub left: Box<Expr>,
     pub operator: Token,
     pub right: Box<Expr>,
+}
+
+#[derive(Clone)]
+pub struct Call {
+    pub callee: Box<Expr>,
+    pub paren: Token,
+    pub arguments: Vec<Box<Expr>>,
 }
 
 impl Binary {
@@ -109,6 +126,16 @@ impl Logical {
     }
 }
 
+impl Call {
+    pub fn new(callee: Box<Expr>, paren: Token, arguments: Vec<Box<Expr>>) -> Self {
+        Self {
+            callee,
+            paren,
+            arguments,
+        }
+    }
+}
+
 impl<R> ExprAccept<R> for Expr {
     fn accept<V: ExprVisitor<R>>(&self, visitor: &mut V) -> R {
         match self {
@@ -119,6 +146,7 @@ impl<R> ExprAccept<R> for Expr {
             Expr::VarExpr(v) => visitor.visit_var(v),
             Expr::AssignmentExpr(a) => visitor.visit_assignment(a),
             Expr::LogicalExpr(l) => visitor.visit_logical(l),
+            Expr::CallExpr(c) => visitor.visit_call(c),
         }
     }
 }
@@ -173,6 +201,10 @@ pub mod ast_printer {
         }
 
         fn visit_logical(&mut self, _logical: &Logical) -> String {
+            todo!()
+        }
+
+        fn visit_call(&mut self, _call: &Call) -> String {
             todo!()
         }
     }
