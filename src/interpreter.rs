@@ -423,9 +423,7 @@ impl StmtVisitor<Result<(), RuntimeException>> for Interpreter {
         let rst = self.evaluate(print.0.as_ref())?;
         match rst {
             CallableRet::Value(val) => Ok(println!("{val}")),
-            CallableRet::Callable(_) => {
-                unimplemented!("print statement for callable not implemented!")
-            }
+            CallableRet::Callable(func) => Ok(println!("{func}")),
         }
     }
 
